@@ -144,6 +144,39 @@ Required focus:
 
 ---
 
+## Launch Readiness (Beta)
+
+### Launch Story
+Sales Follow-Up Copilot is ready for beta when a single user can:
+1. Add/import leads quickly
+2. Generate follow-up drafts safely in manual mode
+3. Approve/edit/reject drafts with clear audit history
+4. Prioritize hot/stale leads with a next-action queue
+
+### Beta Launch Checklist
+- [ ] Local setup succeeds from clean clone (`cp .env.example .env`, `docker compose up -d db`, install, migrate, run)
+- [ ] Core lead workflow works end-to-end (create lead → update stage → add notes)
+- [ ] AI draft flow works in `SEND_MODE=manual` with approval/edit/reject actions
+- [ ] Audit log entries captured for generation and approval decisions
+- [ ] Queue correctly surfaces stale and hot leads
+- [ ] CSV import works with sample file and handles invalid rows safely
+- [ ] Unit tests pass in CI and locally
+- [ ] README + env docs are accurate and complete
+- [ ] No secrets committed; no direct-to-main changes
+
+### Demo Script (10 minutes)
+1. Start app and seed demo data
+2. Show dashboard and pipeline stage movement
+3. Pick a stale lead and generate first follow-up draft
+4. Edit + approve draft (manual mode only)
+5. Show timeline/audit trail and queue reprioritization
+6. Import a short CSV and verify new leads appear
+
+### Exit Criteria for Beta
+- A real test user can complete setup in under 15 minutes
+- At least one lead can be taken from `new` to `contacted` using manual-safe workflow
+- No blocking bugs in lead CRUD, draft workflow, queue, or import path
+
 ## Roadmap
 - **M1:** scaffold + lead CRUD + dashboard
 - **M2:** AI drafting + approval workflow + audit
