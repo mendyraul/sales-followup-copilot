@@ -127,6 +127,12 @@ Run:
 npm test
 ```
 
+Optional quality checks:
+```bash
+npm run lint
+npm run build
+```
+
 Required focus:
 - status transitions
 - follow-up sequence logic
@@ -171,6 +177,12 @@ Sales Follow-Up Copilot is ready for beta when a single user can:
 4. Edit + approve draft (manual mode only)
 5. Show timeline/audit trail and queue reprioritization
 6. Import a short CSV and verify new leads appear
+
+### Troubleshooting
+- **`docker compose up -d db` fails**: ensure Docker Desktop/Engine is running, then retry.
+- **Prisma migration errors**: confirm `DATABASE_URL` in `.env` points to the local Postgres service.
+- **Port 3000 already in use**: run `PORT=3001 npm run dev` and open `http://localhost:3001`.
+- **Tests fail after dependency updates**: clear `node_modules` and reinstall with `npm ci`.
 
 ### Exit Criteria for Beta
 - A real test user can complete setup in under 15 minutes
