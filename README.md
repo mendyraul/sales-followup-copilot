@@ -152,6 +152,9 @@ Required focus:
 
 ## Launch Readiness (Beta)
 
+Detailed operator runbook: [`docs/LAUNCH.md`](docs/LAUNCH.md)
+
+
 ### Launch Story
 Sales Follow-Up Copilot is ready for beta when a single user can:
 1. Add/import leads quickly
