@@ -13,7 +13,8 @@ MVP scaffold for SMB lead follow-up workflow.
 2. Start db: `docker compose up -d db`
 3. Install deps: `npm install`
 4. Prisma: `npx prisma migrate dev --name init`
-5. Run app: `npm run dev`
+5. Seed demo data: `npm run db:seed`
+6. Run app: `npm run dev`
 
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
