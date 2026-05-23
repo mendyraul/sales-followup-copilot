@@ -60,3 +60,15 @@ model AuditLog {
   payload   String?
   createdAt DateTime @default(now())
 }
+
+
+model FeedbackEntry {
+  id          String   @id @default(cuid())
+  leadId      String?
+  rating      Int
+  channel     String   @default("in_app")
+  category    String?
+  comments    String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
