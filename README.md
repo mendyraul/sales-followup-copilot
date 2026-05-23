@@ -20,3 +20,39 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Deployment
+
+### 1) Prepare environment
+Create production env vars in your host (or platform secret manager):
+- `DATABASE_URL` (PostgreSQL connection string)
+- `SEND_MODE=manual` (keep manual mode for beta)
+- `OPENAI_API_KEY` (optional unless AI drafting is enabled)
+
+Do not commit `.env` files. Use platform-managed secrets only.
+
+### 2) Database migration
+Run migrations against the production database:
+```bash
+npx prisma migrate deploy
+```
+
+### 3) Build + start
+```bash
+npm ci
+npm run build
+npm run start
+```
+
+### 4) Post-deploy checks
+- Home page loads without server errors
+- App can connect to PostgreSQL
+- `SEND_MODE` is still `manual`
+- Logs show no missing-secret errors
+
+### Optional: Docker-based deployment
+Build and run with your own process manager/reverse proxy:
+```bash
+docker compose up -d db
+npm ci && npm run build && npm run start
+```
