@@ -192,6 +192,18 @@ Sales Follow-Up Copilot is ready for beta when a single user can:
 - At least one lead can be taken from `new` to `contacted` using manual-safe workflow
 - No blocking bugs in lead CRUD, draft workflow, queue, or import path
 
+### Go / No-Go Decision Grid
+- **Go** when all of the below are true:
+  - Demo script completes without manual DB edits
+  - No `priority:p1` open bugs in launch scope
+  - `npm test` passes on clean install
+  - Manual approval path verified by a second reviewer
+- **No-Go** if any of the below are true:
+  - Queue prioritization misorders hot/stale leads
+  - Audit trail missing for generate/approve/reject actions
+  - CSV import corrupts lead state or silently drops rows
+  - Setup steps in README drift from real bootstrap commands
+
 ## Roadmap
 - **M1:** scaffold + lead CRUD + dashboard
 - **M2:** AI drafting + approval workflow + audit
