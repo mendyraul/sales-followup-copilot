@@ -113,6 +113,9 @@ Open: `http://localhost:3000`
 ---
 
 ## Environment Variables
+Detailed env reference: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
+
+Quick list:
 - `DATABASE_URL` — Postgres connection string
 - `NEXT_PUBLIC_APP_NAME` — UI app name
 - `SEND_MODE` — `manual` or `test` (default: `manual`)
