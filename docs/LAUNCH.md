@@ -56,3 +56,33 @@ If beta quality degrades or blocking bugs appear:
 - New user can setup from clone in <15 minutes
 - One lead goes end-to-end through manual-safe follow-up
 - No blocker in CRUD, queue, draft, import, or audit surfaces
+
+## Launch-Day Checklist (Go/No-Go)
+- [ ] `npm test` green on clean install (`npm ci`)
+- [ ] Manual smoke test completed by operator
+- [ ] Second reviewer verifies approve/reject path writes audit events
+- [ ] No open `priority:p1` issues in launch scope
+- [ ] Latest README + `.env.example` validated against real setup steps
+
+## Success Metrics (first 7 days)
+- **Setup success rate:** % of new testers who reach running app
+- **Workflow completion:** % of testers who complete lead → draft → approval path
+- **Safety integrity:** # of missing audit events for generate/approve/reject (target: 0)
+- **Queue accuracy:** # of hot/stale mis-prioritization reports
+
+## Operator Sign-Off Template
+```text
+Date/Time:
+Operator:
+Build/Branch:
+Test Environment:
+
+Checks:
+- Setup from clean clone: PASS/FAIL
+- Smoke test flow: PASS/FAIL
+- Audit trail verification: PASS/FAIL
+- Queue prioritization check: PASS/FAIL
+
+Decision: GO / NO-GO
+Notes:
+```
