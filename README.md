@@ -33,6 +33,8 @@ AI_PROVIDER="mock"
 AI_API_KEY=""
 ```
 
+Full variable reference: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled
