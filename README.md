@@ -44,3 +44,8 @@ Example payload:
   "channel": "in_app"
 }
 ```
+
+
+## Feedback
+
+- Feedback capture process: `docs/feedback-capture.md`
