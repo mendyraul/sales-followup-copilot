@@ -32,3 +32,23 @@ Detailed reference: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill values.
+
+- `DATABASE_URL` (required): PostgreSQL connection string for Prisma.
+- `NODE_ENV` (optional): `development` / `test` / `production`.
+- `PORT` (optional): Local server port (default `3000`).
+- `NEXTAUTH_URL` (required for auth flows): Base app URL.
+- `NEXTAUTH_SECRET` (required for auth/session): Long random secret.
+- `OPENAI_API_KEY` (required for AI draft generation): Provider API key.
+- `OPENAI_MODEL` (optional): Model name override (default `gpt-4o-mini`).
+- `LOG_LEVEL` (optional): `debug` / `info` / `warn` / `error`.
+
+### Security Notes
+
+- Never commit real `.env` files or secrets.
+- Use `.env.local` for machine-specific overrides.
+- Rotate `NEXTAUTH_SECRET` and API keys if exposed.
