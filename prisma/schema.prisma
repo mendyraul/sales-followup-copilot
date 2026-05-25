@@ -23,6 +23,7 @@ model Lead {
   phone         String?
   source        String?
   status        LeadStatus  @default(NEW)
+  hotLead       Boolean     @default(false)
   unsubscribed  Boolean     @default(false)
   optOutReason  String?
   notes         String?
