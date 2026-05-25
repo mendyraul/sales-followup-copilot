@@ -25,4 +25,9 @@ describe("feedback capture", () => {
   it("rejects invalid source", () => {
     expect(() => normalizeFeedback({ issueId: "a", message: "ok", source: "sms" })).toThrow(/invalid source/);
   });
+
+  it("rejects blank issueId or message after trim", () => {
+    expect(() => normalizeFeedback({ issueId: "   ", message: "ok" })).toThrow(/issueId is required/);
+    expect(() => normalizeFeedback({ issueId: "lead-1", message: "   " })).toThrow(/message is required/);
+  });
 });
