@@ -20,3 +20,12 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Environment variables
+Copy `.env.example` to `.env` and adjust only what you need for local testing.
+
+- `DATABASE_URL`: PostgreSQL connection string used by Prisma.
+- `NEXT_PUBLIC_APP_NAME`: UI display name for the app.
+- `SEND_MODE`: Delivery mode (`manual` by default; keep manual for safe testing).
+- `AI_PROVIDER`: AI backend selector (`mock` by default).
+- `AI_API_KEY`: API key for non-mock providers (leave empty while using mock).
