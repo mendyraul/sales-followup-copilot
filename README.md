@@ -15,6 +15,13 @@ MVP scaffold for SMB lead follow-up workflow.
 4. Prisma: `npx prisma migrate dev --name init`
 5. Run app: `npm run dev`
 
+## Environment variables
+- `DATABASE_URL`: Postgres connection string used by Prisma.
+- `NEXT_PUBLIC_APP_NAME`: UI app name shown in the frontend.
+- `SEND_MODE`: Message delivery mode (`manual` by default; keep non-live for local dev).
+- `AI_PROVIDER`: AI provider routing key (`mock` by default for safe local runs).
+- `AI_API_KEY`: API key for non-mock providers (leave empty for mock/local testing).
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled
