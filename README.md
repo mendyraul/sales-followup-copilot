@@ -36,3 +36,5 @@ Copy `.env.example` to `.env` and configure values for your machine.
 1. Keep `SEND_MODE=manual` while developing.
 2. Leave `AI_PROVIDER=mock` and `AI_API_KEY` empty for deterministic offline-safe runs.
 3. Confirm your database is reachable before running migrations.
+
+See full variable reference: [`docs/environment-variables.md`](docs/environment-variables.md).
