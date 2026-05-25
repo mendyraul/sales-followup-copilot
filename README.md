@@ -156,6 +156,7 @@ Required focus:
 ## Launch Readiness (Beta)
 
 Detailed operator runbook: [`docs/LAUNCH.md`](docs/LAUNCH.md)
+Manual QA checklist: [`docs/MANUAL-QA.md`](docs/MANUAL-QA.md)
 
 
 ### Launch Story
