@@ -20,3 +20,21 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Feedback capture mechanism
+
+`lib/feedback-capture.js` provides a safe normalizer for collecting user feedback from UI/manual/API paths.
+
+- Validates required fields (`issueId`, `message`)
+- Restricts source to `ui`, `email`, `manual`, `api`
+- Trims content and timestamps each event
+
+```js
+const { normalizeFeedback } = require('./lib/feedback-capture')
+
+const feedback = normalizeFeedback({
+  issueId: 'lead-1',
+  message: 'Customer requested monthly billing',
+  source: 'ui'
+})
+```
