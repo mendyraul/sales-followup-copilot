@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest"
+    "test": "vitest",
+    "import:csv": "node scripts/import-leads-csv.mjs"
   },
   "dependencies": {
     "next": "14.2.5",
