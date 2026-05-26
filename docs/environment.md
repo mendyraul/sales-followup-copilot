@@ -14,6 +14,13 @@ This project is designed to run safely in **manual/test mode** by default.
 
 ## Recommended profiles
 
+| Profile | SEND_MODE | AI_PROVIDER | AI_API_KEY |
+|---|---|---|---|
+| Local development | `manual` | `mock` | empty |
+| Staging validation | `manual` | real provider name | staging key |
+| Production (future) | `manual` until explicitly approved | real provider name | production key |
+
+
 ### Local development (safe default)
 ```env
 SEND_MODE=manual
