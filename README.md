@@ -36,3 +36,4 @@ MVP scaffold for SMB lead follow-up workflow.
 - **Never commit `.env` files** with real credentials.
 - If you use a managed database, update `DATABASE_URL` to your provider DSN.
 - If enabling a real AI provider, validate usage in manual mode first before any live workflow.
+- See `docs/environment.md` for profiles, troubleshooting, and security guidance.
