@@ -214,3 +214,10 @@ Sales Follow-Up Copilot is ready for beta when a single user can:
 - **M4:** CSV import + demo data + beta readiness docs
 
 After M4, begin AR project deeper implementation.
+
+## Quick Launch Gate (Operator TL;DR)
+Before onboarding pilot users, confirm:
+- [ ] `SEND_MODE=manual` in deployed environment
+- [ ] Core flow passes: lead create -> draft -> approve/edit/reject -> audit log
+- [ ] `npm test` passing on clean install
+- [ ] Rollback + backup procedure documented
