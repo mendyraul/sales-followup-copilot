@@ -1,75 +1,64 @@
 # Sales Follow-Up Copilot
 
-Sales Follow-Up Copilot helps SMB teams track leads, generate follow-up drafts, and keep momentum without dropping conversations.
+Sales Follow-Up Copilot helps SMB teams generate consistent, high-quality follow-up messages from lightweight lead context.
 
-This repository is the launch-ready MVP baseline.
+## Launch Scope
 
-## What’s in this MVP
-
-- Lead tracking workflow (pipeline-ready foundation)
-- Follow-up drafting foundation (provider abstraction + prompt hooks)
-- Prisma + PostgreSQL data layer
-- Next.js app scaffold for dashboard/queue UI
-- CI workflow for lint/test checks
-- Test-safe defaults (no live outbound sends by default)
+- Guided draft generation for follow-up outreach
+- Channel-ready outputs (email/SMS style variants)
+- Safety-first default mode (`SEND_MODE=manual`)
+- Auditability for generated and sent actions
 
 ## Tech Stack
 
-- **Frontend/App:** Next.js + TypeScript
-- **Data:** Prisma + PostgreSQL
-- **Testing:** Vitest
-- **Local infra:** Docker Compose
+- Next.js + TypeScript
+- Prisma + PostgreSQL
+- Vitest
+- Docker Compose
 
 ## Quick Start
 
+1. Copy environment file:
+   ```bash
+   cp .env.example .env
+   ```
+2. Start the local database:
+   ```bash
+   docker compose up -d db
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Run initial Prisma migration:
+   ```bash
+   npx prisma migrate dev --name init
+   ```
+5. Start the app:
+   ```bash
+   npm run dev
+   ```
+
+## Quality Checks
+
 ```bash
-cp .env.example .env
-docker compose up -d db
-npm install
-npx prisma migrate dev --name init
-npm run dev
+npm run lint
+npm test
 ```
-
-Then open: <http://localhost:3000>
-
-## Environment Variables
-
-Create `.env` from `.env.example` and configure at minimum:
-
-- `DATABASE_URL` — Postgres connection string
-- `SEND_MODE` — defaults to `manual` for safety
-- AI provider keys (optional until AI draft generation is enabled)
 
 ## Safety Defaults
 
-- `SEND_MODE=manual` by default
-- No live email/SMS sending enabled in base scaffold
-- No secrets committed to source
-- Auditability expected for generated/sent actions
+- Manual/test mode enabled by default (`SEND_MODE=manual`)
+- No live outbound email/SMS enabled by default
+- Secrets must not be committed to source control
+- Audit trail required for message generation and send actions
 
-## Launch Checklist
+## Repo Layout
 
-- [ ] Confirm `.env` values for target environment
-- [ ] Run migrations in deploy environment
-- [ ] Verify CI green on main branch
-- [ ] Validate manual QA checklist
-- [ ] Add production AI provider credentials (if enabling draft generation)
+- `src/` — application source code
+- `prisma/` — schema and migrations
+- `docs/` — supporting documentation
 
-## Roadmap (from active issues)
+## Status
 
-- Lead CRUD + status pipeline
-- Follow-up sequence stages
-- Next-action calculation + stale lead detection
-- Queue UI and notes/timeline
-- Tests expansion and docs hardening
-
-## Contributing
-
-1. Create a feature branch from `main`
-2. Keep commits small and focused
-3. Open PR with linked issue
-4. Wait for review/CI before merge
-
-## License
-
-Private repository — all rights reserved.
+This README is launch-oriented and will expand with deployment and operations guidance as the product moves beyond MVP.
