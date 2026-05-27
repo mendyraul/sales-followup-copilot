@@ -60,3 +60,14 @@ model AuditLog {
   payload   String?
   createdAt DateTime @default(now())
 }
+
+model FeedbackEvent {
+  id          String   @id @default(cuid())
+  draftId     String?
+  leadId      String?
+  rating      Int?
+  category    String?
+  comment     String?
+  capturedBy  String   @default("human")
+  createdAt   DateTime @default(now())
+}

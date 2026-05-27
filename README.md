@@ -43,7 +43,8 @@ npm run dev
 2. Track where each lead is in the follow-up pipeline
 3. Generate draft follow-up copy (mock provider by default)
 4. Approve/edit/reject drafts manually
-5. Log actions for auditability
+5. Capture feedback on drafts/outcomes for continuous prompt/process tuning
+6. Log actions for auditability
 
 ## Environment variables
 
@@ -60,6 +61,12 @@ npm run dev
 - `AI_PROVIDER=mock` by default
 - No secrets committed
 - Human review required before any outbound messaging
+
+## Feedback capture (MVP baseline)
+- Prisma model `FeedbackEvent` added for explicit feedback records
+- Supports optional link to `leadId` and/or `draftId`
+- Stores rating/category/comment and capture source (`capturedBy`)
+- Enables future prompt tuning and QA dashboards without changing existing lead/draft flows
 
 ## CI
 - GitHub Actions runs `npm run test` and `npm run build`
