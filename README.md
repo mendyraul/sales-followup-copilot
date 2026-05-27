@@ -207,6 +207,12 @@ Sales Follow-Up Copilot is ready for beta when a single user can:
   - CSV import corrupts lead state or silently drops rows
   - Setup steps in README drift from real bootstrap commands
 
+### Known Beta Limitations
+- Single-user workflow only (no team roles/permissions yet)
+- Outbound providers remain manual/test-first; no default live sending
+- Queue scoring is rule-based and intentionally simple for MVP
+- Import path assumes clean CSV headers from the provided template
+
 ## Roadmap
 - **M1:** scaffold + lead CRUD + dashboard
 - **M2:** AI drafting + approval workflow + audit
