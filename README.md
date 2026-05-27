@@ -65,3 +65,10 @@ npm run dev
 - GitHub Actions runs `npm run test` and `npm run build`
 - Triggers on `main`, `dev`, `feature/*`, and pull requests
 - Workflow file: `.github/workflows/ci.yml`
+
+## Launch verification checklist
+- [ ] `docker compose up -d db`
+- [ ] `npm run test` passes
+- [ ] `npm run build` passes
+- [ ] `SEND_MODE=manual` confirmed in `.env`
+- [ ] `AI_PROVIDER=mock` confirmed in `.env` (unless explicitly testing real provider)
