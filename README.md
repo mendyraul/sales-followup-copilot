@@ -195,6 +195,19 @@ Sales Follow-Up Copilot is ready for beta when a single user can:
 - At least one lead can be taken from `new` to `contacted` using manual-safe workflow
 - No blocking bugs in lead CRUD, draft workflow, queue, or import path
 
+### Production Hand-off Commands
+```bash
+# verify app builds cleanly
+npm run build
+
+# run full tests before deployment
+npm test
+
+# bring stack up locally for launch rehearsal
+docker compose up -d db
+npm run dev
+```
+
 ### Go / No-Go Decision Grid
 - **Go** when all of the below are true:
   - Demo script completes without manual DB edits
