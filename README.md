@@ -66,6 +66,11 @@ npm run dev
 - Prisma model `FeedbackEvent` added for explicit feedback records
 - Supports optional link to `leadId` and/or `draftId`
 - Stores rating/category/comment and capture source (`capturedBy`)
+- Includes normalization helper (`src/lib/feedback.ts`) with guardrails:
+  - requires `leadId` or `draftId`
+  - validates rating range (1-5)
+  - trims/sanitizes comments and defaults `capturedBy` to `human`
+- Unit coverage added in `tests/feedback.test.ts`
 - Enables future prompt tuning and QA dashboards without changing existing lead/draft flows
 
 ## CI
