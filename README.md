@@ -35,3 +35,19 @@ MVP scaffold for SMB lead follow-up workflow.
 - Keep `SEND_MODE=manual` unless Raul explicitly approves live sending.
 - Keep `AI_PROVIDER=mock` for deterministic local development.
 - Never commit populated API keys or production database URLs.
+
+## Environment profiles
+
+### Local-safe profile (default)
+```env
+SEND_MODE="manual"
+AI_PROVIDER="mock"
+AI_API_KEY=""
+```
+
+### External AI test profile (manual only)
+```env
+SEND_MODE="manual"
+AI_PROVIDER="openai"
+AI_API_KEY="<local-test-key>"
+```
