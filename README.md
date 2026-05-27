@@ -20,3 +20,18 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Environment variables
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/sales_followup` | Prisma/PostgreSQL connection string for local development. |
+| `NEXT_PUBLIC_APP_NAME` | No | `Sales Follow-Up Copilot` | Display name shown in the app UI. |
+| `SEND_MODE` | Yes | `manual` | Safety switch for outbound behavior. Keep `manual` for local/testing workflows. |
+| `AI_PROVIDER` | Yes | `mock` | AI backend selector. Use `mock` by default to avoid external provider calls. |
+| `AI_API_KEY` | Conditionally | empty | API key for non-mock AI providers. Leave empty when `AI_PROVIDER=mock`. |
+
+### Safe local defaults
+- Keep `SEND_MODE=manual` unless Raul explicitly approves live sending.
+- Keep `AI_PROVIDER=mock` for deterministic local development.
+- Never commit populated API keys or production database URLs.
