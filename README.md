@@ -51,3 +51,8 @@ SEND_MODE="manual"
 AI_PROVIDER="openai"
 AI_API_KEY="<local-test-key>"
 ```
+
+
+## CI
+- GitHub Actions runs tests and a production build on pushes (main/dev/feature/*) and pull requests.
+- Workflow file: `.github/workflows/ci.yml`.
