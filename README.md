@@ -15,6 +15,9 @@ MVP scaffold for SMB lead follow-up workflow.
 4. Prisma: `npx prisma migrate dev --name init`
 5. Run app: `npm run dev`
 
+## Manual QA
+- Run through `docs/manual-qa-checklist.md` before opening or merging a PR.
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled
