@@ -59,6 +59,12 @@ Use `.env.example` as the baseline. These are the currently supported variables:
 - [ ] Run tests and fix failures (`npm test`)
 - [ ] Smoke test critical pages in deployed environment
 
+### Release gates
+- **Functional gate:** lead CRUD, draft generation, and manual review flow all pass manual QA.
+- **Safety gate:** no live outbound integrations active; `SEND_MODE=manual` verified in runtime config.
+- **Data gate:** migrations applied, seed/demo data available, CSV import rejects malformed rows cleanly.
+- **Quality gate:** tests pass locally and in CI; no unresolved P1 launch bugs.
+
 ### Pre-launch QA script
 1. Create at least 3 leads with different statuses.
 2. Generate first follow-up draft for each lead.
