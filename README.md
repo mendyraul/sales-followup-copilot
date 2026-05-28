@@ -17,6 +17,7 @@ MVP scaffold for SMB lead follow-up workflow.
 
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
-- No live email/SMS sending enabled
+- `SEND_MODE=live` is the only value that enables live sending behavior
+- No live email/SMS sending enabled unless explicitly switched to `live`
 - No secrets in source control
 - Audit logs required for generated/sent actions
