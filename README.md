@@ -20,3 +20,8 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Lead notes + timeline
+- `Lead.notes` stores manual context for each lead.
+- `LeadEvent` stores timeline entries (`eventType` + optional `payload`) tied to each lead.
+- Together, these provide traceable follow-up history for manual-safe workflows.
