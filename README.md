@@ -22,6 +22,7 @@ MVP scaffold for SMB lead follow-up workflow.
 - Audit logs required for generated/sent actions
 
 ## Lead notes + timeline
-- `Lead.notes` stores manual context for each lead.
-- `LeadEvent` stores timeline entries (`eventType` + optional `payload`) tied to each lead.
-- Together, these provide traceable follow-up history for manual-safe workflows.
+- `LeadNote` provides structured per-lead notes with timestamps.
+- `LeadEvent` tracks normalized timeline events via `LeadEventType`.
+- `Lead.notes` remains as a quick summary field for at-a-glance context.
+- Together, these support an auditable lead timeline for manual-safe workflows.

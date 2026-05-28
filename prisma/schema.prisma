@@ -30,6 +30,7 @@ model Lead {
   updatedAt     DateTime    @updatedAt
   drafts        FollowUpDraft[]
   events        LeadEvent[]
+  timelineNotes LeadNote[]
 }
 
 model FollowUpDraft {
@@ -43,13 +44,32 @@ model FollowUpDraft {
   lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
+enum LeadEventType {
+  CREATED
+  STATUS_CHANGED
+  FOLLOW_UP_DRAFTED
+  FOLLOW_UP_APPROVED
+  FOLLOW_UP_SENT
+  NOTE_ADDED
+  CUSTOM
+}
+
 model LeadEvent {
-  id        String   @id @default(cuid())
-  leadId     String
-  eventType  String
-  payload    String?
-  createdAt  DateTime @default(now())
-  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  leadId      String
+  eventType   LeadEventType @default(CUSTOM)
+  payload     String?
+  createdAt   DateTime      @default(now())
+  lead        Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model LeadNote {
+  id         String   @id @default(cuid())
+  leadId      String
+  body        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
