@@ -60,3 +60,33 @@ model AuditLog {
   payload   String?
   createdAt DateTime @default(now())
 }
+
+
+enum FeedbackSource {
+  IN_APP
+  EMAIL
+  CALL
+  MANUAL
+}
+
+enum FeedbackSentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+model FeedbackEntry {
+  id          String            @id @default(cuid())
+  leadId       String
+  source       FeedbackSource    @default(IN_APP)
+  sentiment    FeedbackSentiment @default(NEUTRAL)
+  rating       Int?
+  summary      String
+  actionItems  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+}
