@@ -56,3 +56,38 @@ AI_API_KEY="<local-test-key>"
 ## CI
 - GitHub Actions runs tests and a production build on pushes (main/dev/feature/*) and pull requests.
 - Workflow file: `.github/workflows/ci.yml`.
+
+## Launch README (MVP)
+This repo ships a **manual-safe MVP** for sales follow-up drafting. Launch means making it usable for controlled internal testing without enabling live outbound sending.
+
+### Launch goals
+- Stand up app + DB locally and in a preview deployment.
+- Confirm core lead workflow is usable end-to-end.
+- Keep all outbound actions manual/test-mode only.
+- Capture feedback and known gaps before broader rollout.
+
+### Launch checklist
+- [ ] Environment variables configured (`.env` based on `.env.example`)
+- [ ] Database migrations applied (`npx prisma migrate dev`)
+- [ ] Unit tests passing (`npm test`)
+- [ ] App boots locally (`npm run dev`)
+- [ ] Manual QA pass completed (see checklist below)
+- [ ] No secrets committed
+- [ ] Feature branch PR opened for review
+
+### Manual QA checklist
+1. Create/edit a lead record and verify persistence.
+2. Generate a follow-up draft and verify output is stored.
+3. Confirm `SEND_MODE=manual` blocks any live-send behavior.
+4. Confirm timeline/notes updates appear correctly.
+5. Validate basic UX on desktop for list/detail workflow.
+
+### Release guardrails
+- **Do not** switch to live send mode by default.
+- **Do not** commit production credentials or tokens.
+- Merge flow: `feature/*` → `dev` (human promotes `dev` → `main`).
+
+### Known launch assumptions
+- MVP focuses on reliability + auditability over automation.
+- AI provider defaults to `mock` for deterministic testing.
+- Integrations and advanced automation are deferred to follow-up milestones.
