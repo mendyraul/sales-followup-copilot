@@ -8,12 +8,50 @@ MVP scaffold for SMB lead follow-up workflow.
 - Vitest
 - Docker Compose
 
-## Quick start (under 3 minutes)
-1. Copy env: `cp .env.example .env`
-2. Start db: `docker compose up -d db`
-3. Install deps: `npm install`
-4. Prisma: `npx prisma migrate dev --name init`
-5. Run app: `npm run dev`
+## Setup instructions
+
+### Prerequisites
+- Node.js 20+
+- npm 10+
+- Docker + Docker Compose plugin
+
+### 1) Configure environment
+```bash
+cp .env.example .env
+```
+Fill in `.env` values before first run (database URL, app URL, and any provider keys).
+
+### 2) Start local database
+```bash
+docker compose up -d db
+```
+
+### 3) Install dependencies
+```bash
+npm install
+```
+
+### 4) Initialize database schema
+```bash
+npx prisma migrate dev --name init
+```
+
+### 5) Run the app
+```bash
+npm run dev
+```
+Open `http://localhost:3000`.
+
+### 6) Run tests
+```bash
+npm test
+```
+
+### Common scripts
+- `npm run dev` — start local dev server
+- `npm run build` — production build
+- `npm run lint` — lint checks
+- `npm test` — run test suite
 
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
