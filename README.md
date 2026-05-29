@@ -20,3 +20,13 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+
+## Continuous Integration
+
+This project uses GitHub Actions (`.github/workflows/ci.yml`) to run on every push and pull request:
+
+- install dependencies with `npm ci`
+- run TypeScript type checks (`npx tsc --noEmit`)
+- run tests (`npm test -- --runInBand --passWithNoTests`)
+- run production build (`npm run build`)
