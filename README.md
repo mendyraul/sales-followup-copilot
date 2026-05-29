@@ -20,3 +20,6 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Deployment
+- See `docs/deployment.md` for production-safe deployment steps and post-deploy checks.
