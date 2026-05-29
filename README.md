@@ -20,7 +20,9 @@ Sales Follow-Up Copilot helps a small team track leads, draft follow-ups, and ke
 
 ## Environment variables
 
-Use `.env.example` as the baseline. These are the currently supported variables:
+Use `.env.example` as the baseline. Full variable reference is in [`docs/environment.md`](docs/environment.md).
+
+Quick summary:
 
 - `DATABASE_URL`: PostgreSQL connection string used by Prisma.
 - `NEXT_PUBLIC_APP_NAME`: Display name shown in the UI.
