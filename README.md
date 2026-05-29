@@ -15,6 +15,11 @@ MVP scaffold for SMB lead follow-up workflow.
 4. Prisma: `npx prisma migrate dev --name init`
 5. Run app: `npm run dev`
 
+## Environment variables
+- Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
+- Copy template: `cp .env.example .env`
+- Keep secrets local; never commit `.env`
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled
