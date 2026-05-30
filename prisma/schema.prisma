@@ -30,6 +30,7 @@ model Lead {
   updatedAt     DateTime    @updatedAt
   drafts        FollowUpDraft[]
   events        LeadEvent[]
+  feedback      FeedbackCapture[]
 }
 
 model FollowUpDraft {
@@ -53,10 +54,27 @@ model LeadEvent {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
+  id         String   @id @default(cuid())
+  action     String
   entityType String
-  entityId  String?
-  payload   String?
-  createdAt DateTime @default(now())
+  entityId   String?
+  payload    String?
+  createdAt  DateTime @default(now())
+}
+
+model FeedbackCapture {
+  id           String   @id @default(cuid())
+  leadId        String?
+  source        String   @default("in-app")
+  category      String   @default("general")
+  message       String
+  rating        Int?
+  contactEmail  String?
+  contextJson   String?
+  createdAt     DateTime @default(now())
+
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([createdAt])
 }

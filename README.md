@@ -27,3 +27,7 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled unless explicitly switched to `live`
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Feedback capture
+- Feedback mechanism spec: `docs/FEEDBACK_CAPTURE.md`
+- Prisma model: `FeedbackCapture` (manual-safe storage for beta feedback)
