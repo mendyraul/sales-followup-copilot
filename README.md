@@ -15,6 +15,11 @@ MVP scaffold for SMB lead follow-up workflow.
 4. Prisma: `npx prisma migrate dev --name init`
 5. Run app: `npm run dev`
 
+## Seed / demo data
+- Generate local demo data: `npm run seed:demo`
+- Validate generated demo data: `npm run test:seed-demo`
+- See details: `docs/seed-demo-data.md`
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest"
+    "test": "vitest",
+    "seed:demo": "node prisma/seed.mjs",
+    "test:seed-demo": "node tests/seed-demo-data.test.mjs"
   },
   "dependencies": {
     "next": "14.2.5",

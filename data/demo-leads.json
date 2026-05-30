@@ -1,0 +1,22 @@
+[
+  {
+    "id": "lead_demo_001",
+    "fullName": "Ava Thompson",
+    "email": "ava.thompson@example.com",
+    "company": "Northwind Labs",
+    "status": "NEW",
+    "lastContactedAt": null,
+    "notes": "Requested pricing details after webinar.",
+    "createdAt": "2026-05-30T18:50:38.293Z"
+  },
+  {
+    "id": "lead_demo_002",
+    "fullName": "Marcus Lee",
+    "email": "marcus.lee@example.com",
+    "company": "Summit Retail",
+    "status": "FOLLOW_UP",
+    "lastContactedAt": "2026-05-29T18:50:38.293Z",
+    "notes": "Needs approval from finance before decision.",
+    "createdAt": "2026-05-30T18:50:38.293Z"
+  }
+]
