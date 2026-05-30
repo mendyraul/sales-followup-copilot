@@ -32,3 +32,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'failed to capture feedback' }, { status: 500 });
   }
 }
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const leadId = searchParams.get('leadId');
+    const limitParam = Number(searchParams.get('limit') ?? '20');
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 20;
+
+    const where = leadId ? { leadId } : undefined;
+    const feedback = await prisma.feedback.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return NextResponse.json({ feedback });
+  } catch {
+    return NextResponse.json({ error: 'failed to fetch feedback' }, { status: 500 });
+  }
+}
