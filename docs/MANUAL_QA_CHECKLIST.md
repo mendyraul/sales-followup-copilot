@@ -44,8 +44,20 @@ Use this checklist before opening or merging a release PR.
 - [ ] `npm run lint` passes (if configured)
 - [ ] `npm run build` passes
 
+## 8) Browser/Device Spot Check
+- [ ] Desktop Chrome latest: critical paths pass
+- [ ] Mobile viewport (responsive): lead list/detail remains usable
+- [ ] No blocking console errors during core workflow
+
 ## Sign-off
 - Tester:
 - Date:
 - Branch/PR:
 - Notes/bugs found:
+
+### Bug Log (if any)
+- Severity:
+- Repro steps:
+- Expected:
+- Actual:
+- Screenshot/video link:
