@@ -21,7 +21,7 @@ describe('feedbackCapture', () => {
     expect(listFeedback()).toHaveLength(1);
   });
 
-  it('rejects invalid rating or email', () => {
+  it('rejects invalid rating, email, channel, or submittedAt', () => {
     expect(() =>
       captureFeedback({ leadEmail: 'bad-email', rating: 5, channel: 'sms' })
     ).toThrow(/valid email/i);
@@ -29,6 +29,19 @@ describe('feedbackCapture', () => {
     expect(() =>
       captureFeedback({ leadEmail: 'ok@example.com', rating: 7, channel: 'sms' })
     ).toThrow(/between 1 and 5/i);
+
+    expect(() =>
+      captureFeedback({ leadEmail: 'ok@example.com', rating: 4, channel: 'fax' as any })
+    ).toThrow(/channel must be one of/i);
+
+    expect(() =>
+      captureFeedback({
+        leadEmail: 'ok@example.com',
+        rating: 4,
+        channel: 'sms',
+        submittedAt: 'not-a-date'
+      })
+    ).toThrow(/valid ISO timestamp/i);
   });
 
 

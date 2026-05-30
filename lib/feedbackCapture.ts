@@ -40,6 +40,15 @@ export function captureFeedback(input: FeedbackInput): FeedbackRecord {
     throw new Error('rating must be an integer between 1 and 5');
   }
 
+  const validChannels: FeedbackChannel[] = ['email', 'sms', 'call', 'in-app'];
+  if (!validChannels.includes(input.channel)) {
+    throw new Error('channel must be one of email, sms, call, or in-app');
+  }
+
+  if (input.submittedAt && Number.isNaN(Date.parse(input.submittedAt))) {
+    throw new Error('submittedAt must be a valid ISO timestamp');
+  }
+
   const record: FeedbackRecord = {
     id: `fb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     leadEmail,
