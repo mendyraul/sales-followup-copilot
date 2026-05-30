@@ -1,0 +1,44 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { captureFeedback, clearFeedbackStore, listFeedback } from './feedbackCapture';
+
+describe('feedbackCapture', () => {
+  beforeEach(() => {
+    clearFeedbackStore();
+  });
+
+  it('captures validated feedback records', () => {
+    const record = captureFeedback({
+      leadEmail: ' Prospect@Example.com ',
+      rating: 5,
+      comment: '  Super helpful follow-up flow.  ',
+      channel: 'email'
+    });
+
+    expect(record.leadEmail).toBe('prospect@example.com');
+    expect(record.rating).toBe(5);
+    expect(record.comment).toBe('Super helpful follow-up flow.');
+    expect(record.id.startsWith('fb_')).toBe(true);
+    expect(listFeedback()).toHaveLength(1);
+  });
+
+  it('rejects invalid rating or email', () => {
+    expect(() =>
+      captureFeedback({ leadEmail: 'bad-email', rating: 5, channel: 'sms' })
+    ).toThrow(/valid email/i);
+
+    expect(() =>
+      captureFeedback({ leadEmail: 'ok@example.com', rating: 7, channel: 'sms' })
+    ).toThrow(/between 1 and 5/i);
+  });
+
+  it('stores null when optional comment is empty', () => {
+    const record = captureFeedback({
+      leadEmail: 'ok@example.com',
+      rating: 3,
+      comment: '   ',
+      channel: 'call'
+    });
+
+    expect(record.comment).toBeNull();
+  });
+});

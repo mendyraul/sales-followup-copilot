@@ -23,3 +23,4 @@ MVP scaffold for SMB lead follow-up workflow.
 
 ## Docs
 - Seed/demo data: `docs/seed-data.md`
+- Feedback capture: `docs/feedback-capture.md`
