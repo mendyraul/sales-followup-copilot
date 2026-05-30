@@ -31,6 +31,33 @@ describe('feedbackCapture', () => {
     ).toThrow(/between 1 and 5/i);
   });
 
+
+
+  it('truncates comments beyond 500 chars', () => {
+    const longComment = 'x'.repeat(700);
+    const record = captureFeedback({
+      leadEmail: 'trim@example.com',
+      rating: 4,
+      comment: longComment,
+      channel: 'in-app'
+    });
+
+    expect(record.comment).not.toBeNull();
+    expect(record.comment?.length).toBe(500);
+  });
+
+  it('uses provided submittedAt timestamp when present', () => {
+    const submittedAt = '2026-05-30T15:00:00.000Z';
+    const record = captureFeedback({
+      leadEmail: 'time@example.com',
+      rating: 4,
+      channel: 'sms',
+      submittedAt
+    });
+
+    expect(record.submittedAt).toBe(submittedAt);
+  });
+
   it('stores null when optional comment is empty', () => {
     const record = captureFeedback({
       leadEmail: 'ok@example.com',
