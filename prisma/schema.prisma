@@ -3,60 +3,34 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum LeadStatus {
-  NEW
-  CONTACTED
-  REPLIED
-  HOT
-  WON
-  LOST
-}
-
 model Lead {
-  id            String      @id @default(cuid())
-  name          String
-  email         String?
-  phone         String?
-  source        String?
-  status        LeadStatus  @default(NEW)
-  unsubscribed  Boolean     @default(false)
-  optOutReason  String?
-  notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  drafts        FollowUpDraft[]
-  events        LeadEvent[]
+  id        String   @id @default(cuid())
+  email     String
+  name      String?
+  company   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  feedback  Feedback[]
+
+  @@index([email])
 }
 
-model FollowUpDraft {
+model Feedback {
   id          String   @id @default(cuid())
   leadId      String
-  stage       String
-  content     String
-  approved    Boolean  @default(false)
-  rejected    Boolean  @default(false)
+  source      String
+  rating      Int?
+  sentiment   String?
+  notes       String
+  capturedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-}
 
-model LeadEvent {
-  id        String   @id @default(cuid())
-  leadId     String
-  eventType  String
-  payload    String?
-  createdAt  DateTime @default(now())
-  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-}
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
-  entityType String
-  entityId  String?
-  payload   String?
-  createdAt DateTime @default(now())
+  @@index([leadId, capturedAt])
+  @@index([source])
 }
