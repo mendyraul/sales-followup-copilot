@@ -20,3 +20,11 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Stale lead detection utility
+- `lib/staleLeadDetection.ts` provides `detectStaleLeads` for scoring inactivity.
+- Default threshold is 7 days (configurable via `staleAfterDays`).
+- `paused` and `closed` leads are intentionally excluded from stale flags.
+
+## QA
+- Manual QA checklist: [docs/qa/manual-checklist.md](docs/qa/manual-checklist.md)
