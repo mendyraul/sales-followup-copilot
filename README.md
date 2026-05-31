@@ -48,3 +48,6 @@ npm run start
 - Run `npm test` and `npm run build` on every PR.
 - Deploy from `main` only after review.
 - Roll back by redeploying previous known-good artifact.
+
+## Manual QA checklist
+- Use docs/manual-qa-checklist.md before merge/deploy to validate safe manual-mode behavior.
