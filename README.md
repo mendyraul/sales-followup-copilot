@@ -20,3 +20,12 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Feedback Capture (Issue #29)
+
+A lightweight feedback utility now exists in `lib/feedback.ts` for storing manual feedback tied to a lead:
+
+- `captureFeedback({ leadId, rating, notes })`
+- `listFeedback(leadId)`
+
+Ratings support `positive | neutral | negative` to keep downstream analytics simple.
