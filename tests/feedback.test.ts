@@ -26,4 +26,22 @@ describe("feedback capture", () => {
       })
     ).toThrow(/between 1 and 5/);
   });
+
+  it("enforces note length after trimming", () => {
+    expect(() =>
+      toFeedbackCreateData({
+        leadId: "lead_123",
+        source: "manual",
+        notes: "  " + "a".repeat(5000) + "  "
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      toFeedbackCreateData({
+        leadId: "lead_123",
+        source: "manual",
+        notes: "  " + "a".repeat(5001) + "  "
+      })
+    ).toThrow("notes must be <= 5000 chars");
+  });
 });
