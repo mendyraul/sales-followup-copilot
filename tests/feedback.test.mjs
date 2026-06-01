@@ -25,4 +25,12 @@ describe('normalizeFeedback', () => {
   it('throws for invalid rating', () => {
     expect(() => normalizeFeedback({ rating: 6 })).toThrow();
   });
+
+  it('keeps object metadata and drops non-object metadata', () => {
+    const good = normalizeFeedback({ rating: 5, metadata: { source: 'qa' } });
+    expect(good.metadata).toEqual({ source: 'qa' });
+
+    const bad = normalizeFeedback({ rating: 5, metadata: ['qa'] });
+    expect(bad.metadata).toBe(null);
+  });
 });
