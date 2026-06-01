@@ -20,3 +20,9 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+
+## Launch readiness
+Use the beta launch checklist before test-user demos:
+- `docs/launch-readiness.md`
+
