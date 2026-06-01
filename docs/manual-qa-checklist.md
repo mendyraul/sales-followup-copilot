@@ -1,29 +1,32 @@
-# Manual QA Checklist
+# Manual QA Checklist (MVP)
 
-Use this checklist before opening or merging a PR.
+Use this checklist before opening or updating a release PR.
 
-## Setup
-- [ ] `.env` exists and is based on `.env.example`
-- [ ] PostgreSQL is running (`docker compose up -d db`)
-- [ ] Dependencies installed (`npm install`)
-- [ ] Prisma migrations applied (`npx prisma migrate dev`)
+## Environment prep
+- [ ] `cp .env.example .env`
+- [ ] `docker compose up -d db`
+- [ ] `npm ci`
+- [ ] `npx prisma migrate dev`
+- [ ] `npm run dev`
 
-## Core smoke checks
-- [ ] App boots locally (`npm run dev`) without runtime errors
-- [ ] Home/dashboard page renders
-- [ ] Lead list page renders (if implemented)
-- [ ] Any create/update actions complete without server errors
+## Core workflow
+- [ ] Create a lead with name, email, and status
+- [ ] Edit lead status and verify status persists after refresh
+- [ ] Open lead detail and add a timeline note
+- [ ] Generate a follow-up draft for the lead
+- [ ] Confirm generated draft requires manual approval (no auto-send)
 
-## Safety and guardrails
-- [ ] `SEND_MODE` remains `manual` in local/dev testing
-- [ ] No live outbound messaging is triggered
-- [ ] No secrets were added to tracked files
+## Queue & prioritization
+- [ ] Verify stale lead detection marks old leads correctly
+- [ ] Verify hot-lead flag is visible in lead list/queue
+- [ ] Verify next-action is shown for at least one stale and one hot lead
 
-## Quality checks
-- [ ] Unit tests pass (`npm test`)
-- [ ] Lint/type checks pass (if configured)
-- [ ] New or changed behavior is documented in README or related docs
+## Data safety
+- [ ] Confirm `SEND_MODE=manual` in active environment
+- [ ] Confirm no real customer credentials are in local `.env`
+- [ ] Confirm no production secrets are printed in logs
 
-## Release readiness
-- [ ] Branch is pushed
-- [ ] PR references the issue and summarizes manual QA results
+## Regression quick pass
+- [ ] `npm run test`
+- [ ] `npm run lint`
+- [ ] App home/dashboard loads without console or server errors
