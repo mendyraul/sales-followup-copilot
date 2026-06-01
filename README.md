@@ -49,6 +49,22 @@ MVP scaffold for SMB lead follow-up workflow.
 3. Verify app health and core lead workflow after rollback.
 4. Post incident summary with root cause and preventive action.
 
+## Go/No-Go launch decision
+All of the following must be true to proceed with launch:
+- [ ] Checklist sections above are fully complete
+- [ ] At least one reviewer signs off on QA evidence
+- [ ] Rollback owner is assigned and reachable
+- [ ] Production monitoring dashboard is open and validated
+
+If any item is not complete, **No-Go** and reschedule launch.
+
+## Launch day runbook (T-30 to T+30)
+- **T-30 min:** confirm env vars, DB connectivity, and monitoring visibility
+- **T-15 min:** re-run smoke tests on staging/prod-like environment
+- **T-0:** deploy and verify health checks
+- **T+10 min:** verify lead CRUD + draft generation path in production
+- **T+30 min:** document outcome and close launch issue with evidence links
+
 ## Known beta limitations
 - Auth and tenant isolation are not production-hardened yet.
 - Messaging integrations are intentionally kept in manual mode.
