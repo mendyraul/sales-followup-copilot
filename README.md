@@ -60,6 +60,8 @@ Quick summary:
 - [ ] Ensure `SEND_MODE=manual` before release
 - [ ] Run tests and fix failures (`npm test`)
 - [ ] Smoke test critical pages in deployed environment
+- [ ] Capture baseline screenshots for lead list, lead detail, and draft review states
+- [ ] Record deployment SHA + migration version in release notes
 
 ### Release gates
 - **Functional gate:** lead CRUD, draft generation, and manual review flow all pass manual QA.
@@ -81,6 +83,13 @@ Quick summary:
 - Log product issues as GitHub issues with reproduction steps.
 - Track launch bugs separately from feature roadmap items.
 - Review audit logs weekly during early rollout.
+
+### Launch-day rollback plan
+1. Set app to maintenance mode (or remove public entry point) if critical data/safety issues are found.
+2. Revert to previous deployment artifact.
+3. Re-run schema compatibility check against restored version.
+4. Confirm `SEND_MODE=manual` and `AI_PROVIDER=mock` before re-opening access.
+5. Open incident issue with timeline + root cause + prevention actions.
 
 ## Development workflow
 1. Create feature branch from `main`
