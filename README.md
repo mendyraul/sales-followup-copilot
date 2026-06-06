@@ -11,6 +11,7 @@ Small teams lose deals when follow-ups are inconsistent. This project provides a
 - Generate first-draft outreach content for human review
 - Keep strict manual/test safeguards as the default
 
+
 ## Current status
 Scaffold + core infrastructure in progress. This repo is actively developed through issue-driven slices.
 
@@ -66,7 +67,11 @@ Expected headers:
    ```bash
    npx prisma migrate dev --name init
    ```
-5. Start the development server:
+5. Seed demo data (optional but recommended for demos):
+   ```bash
+   npm run db:seed
+   ```
+6. Start the development server:
    ```bash
    npm run dev
    ```
@@ -97,6 +102,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Stop database: `docker compose down`
 - Recreate clean database volume: `docker compose down -v && docker compose up -d db`
 - Generate Prisma client: `npx prisma generate`
+- Seed demo data: `npm run db:seed`
 
 ## Environment variables
 - See `.env.example` for the template
