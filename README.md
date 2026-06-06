@@ -47,6 +47,11 @@ npm test -- --run
 - Recreate clean database volume: `docker compose down -v && docker compose up -d db`
 - Generate Prisma client: `npx prisma generate`
 
+## Environment variables
+- Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
+- Copy template: `cp .env.example .env`
+- Keep secrets local; never commit `.env`
+
 ## Safety defaults
 - Test/manual mode only by default (`SEND_MODE=manual`)
 - No live email/SMS sending enabled
