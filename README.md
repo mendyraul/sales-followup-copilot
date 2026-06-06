@@ -19,6 +19,7 @@ Scaffold + core infrastructure in progress. This repo is actively developed thro
 - **Database:** PostgreSQL + Prisma ORM
 - **Testing:** Vitest
 - **Local infra:** Docker Compose
+- **CI:** GitHub Actions
 
 ## Safety-first defaults
 - `SEND_MODE=manual` by default
@@ -62,11 +63,19 @@ Open `http://localhost:3000`.
 npm test -- --run
 ```
 
+Core focus areas:
+- status transitions
+- follow-up sequence logic
+- queue prioritization
+- stale/hot lead detection
+- opt-out safety checks
+
 ## Continuous Integration
-GitHub Actions in `.github/workflows/ci.yml` run on pushes and pull requests to:
+GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integration-branch pushes to:
 - install dependencies with `npm ci`
-- run TypeScript type checks with `npx tsc --noEmit`
-- run tests with `npm test -- --runInBand --passWithNoTests`
+- run linting with `npm run lint`
+- run TypeScript type checks with `npm run typecheck`
+- run tests with `npm test -- --run`
 - run the production build with `npm run build`
 
 ## Useful commands
@@ -87,13 +96,22 @@ GitHub Actions in `.github/workflows/ci.yml` run on pushes and pull requests to:
 4. Add/update tests where applicable
 5. Open a PR to the intended integration branch
 
-## Launch checklist (MVP)
+## Beta launch checklist
 - [ ] Lead CRUD
 - [ ] Pipeline/status tracking
 - [ ] Queue UI and next-action logic
 - [ ] Draft generation + review workflow
 - [ ] Manual QA checklist
 - [ ] Deployment and environment docs
+- [ ] CSV import path validated with sample data
+
+## Demo script
+1. Start app and seed demo data
+2. Show dashboard and pipeline stage movement
+3. Pick a stale lead and generate a follow-up draft
+4. Edit + approve draft in manual mode
+5. Show timeline/audit trail and queue reprioritization
+6. Import a short CSV and verify new leads appear
 
 ## Deployment
 See [`docs/deployment.md`](docs/deployment.md) for production-safe deployment steps and post-deploy checks.

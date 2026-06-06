@@ -6,15 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest"
+    "test": "vitest",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@prisma/client": "5.18.0",
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@prisma/client": "5.18.0"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@types/node": "25.9.1",
+    "@types/react": "19.2.15",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5",
     "prisma": "5.18.0",
     "typescript": "5.5.4",
     "vitest": "2.0.5"

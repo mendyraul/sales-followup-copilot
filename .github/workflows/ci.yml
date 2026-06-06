@@ -2,20 +2,27 @@ name: CI
 
 on:
   pull_request:
-    branches: [dev, main]
+    branches: [dev, main, agent/sales-copilot-mvp-scaffold]
   push:
-    branches: [dev]
+    branches: [dev, agent/sales-copilot-mvp-scaffold]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-and-build:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -24,13 +31,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
         run: npm test -- --run
 
-      - name: Build app (when app/pages exists)
-        run: |
-          if [ -d app ] || [ -d pages ]; then
-            npm run build
-          else
-            echo "Skipping build: app/pages directory not present yet."
-          fi
+      - name: Build
+        run: npm run build
