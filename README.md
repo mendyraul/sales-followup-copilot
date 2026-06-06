@@ -25,8 +25,8 @@ Scaffold + core infrastructure in progress. This repo is actively developed thro
 - No live email/SMS sending enabled
 - No production credentials required for local development
 - Drafts are intended for approve/edit/reject workflow
+- No secrets in source control
 - Audit logs are expected for generated/sent actions
-- Keep secrets local and out of source control
 
 ## Prerequisites
 - Node.js 20+
@@ -61,6 +61,13 @@ Open `http://localhost:3000`.
 ```bash
 npm test -- --run
 ```
+
+## Continuous Integration
+GitHub Actions in `.github/workflows/ci.yml` run on pushes and pull requests to:
+- install dependencies with `npm ci`
+- run TypeScript type checks with `npx tsc --noEmit`
+- run tests with `npm test -- --runInBand --passWithNoTests`
+- run the production build with `npm run build`
 
 ## Useful commands
 - Stop database: `docker compose down`
