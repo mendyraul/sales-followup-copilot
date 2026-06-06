@@ -21,6 +21,20 @@ Scaffold + core infrastructure in progress. This repo is actively developed thro
 - **Local infra:** Docker Compose
 - **CI:** GitHub Actions
 
+## CSV lead import
+
+Run bulk CSV import:
+
+```bash
+npm run import:csv -- ./data/leads.csv
+```
+
+Expected headers:
+- `name` (required)
+- `email` (required)
+- `source` (optional)
+- `status` (optional, defaults to `NEW`)
+
 ## Safety-first defaults
 - `SEND_MODE=manual` by default
 - `SEND_MODE=live` is the only value that enables live sending behavior

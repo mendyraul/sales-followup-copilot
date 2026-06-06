@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "import:csv": "node scripts/import-leads-csv.mjs"
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
