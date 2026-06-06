@@ -23,7 +23,8 @@ Scaffold + core infrastructure in progress. This repo is actively developed thro
 
 ## Safety-first defaults
 - `SEND_MODE=manual` by default
-- No live email/SMS sending enabled
+- `SEND_MODE=live` is the only value that enables live sending behavior
+- No live email/SMS sending enabled unless explicitly switched to `live`
 - No production credentials required for local development
 - Drafts are intended for approve/edit/reject workflow
 - No secrets in source control
