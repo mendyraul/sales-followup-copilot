@@ -11,7 +11,6 @@ Small teams lose deals when follow-ups are inconsistent. This project provides a
 - Generate first-draft outreach content for human review
 - Keep strict manual/test safeguards as the default
 
-
 ## Current status
 Scaffold + core infrastructure in progress. This repo is actively developed through issue-driven slices.
 
@@ -35,6 +34,14 @@ Expected headers:
 - `email` (required)
 - `source` (optional)
 - `status` (optional, defaults to `NEW`)
+
+## Manual QA checklist
+- [ ] App starts locally (`npm run dev`) without runtime errors.
+- [ ] Lead list/dashboard loads with demo data.
+- [ ] Creating and editing a lead works end-to-end.
+- [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
+- [ ] Outbound actions remain blocked unless `SEND_MODE=manual` is intentionally changed.
+- [ ] No secrets are printed in logs or committed to git.
 
 ## Safety-first defaults
 - `SEND_MODE=manual` by default
