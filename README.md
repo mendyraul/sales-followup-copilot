@@ -7,7 +7,7 @@ Small teams lose deals when follow-ups are inconsistent. This project provides a
 
 ## MVP goals
 - Capture and manage leads in one place
-- Track follow-up state and timeline history
+- Track follow-up state, timeline history, and structured lead notes
 - Generate first-draft outreach content for human review
 - Keep strict manual/test safeguards as the default
 
@@ -111,11 +111,22 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Generate Prisma client: `npx prisma generate`
 - Seed demo data: `npm run db:seed`
 
+## Lead notes + timeline
+- `Lead.notes` stays available for quick summary text.
+- `LeadNote` supports structured per-lead notes with timestamps.
+- `LeadEvent` uses normalized `LeadEventType` values for an auditable activity timeline.
+
+## Feedback capture
+- Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
+- Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
+- Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
+
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
 - Minimum local values: `DATABASE_URL` and `SEND_MODE=manual`
 - AI provider keys are optional and only needed for draft-generation testing
+- Feedback defaults: `FEEDBACK_CAPTURE_ENABLED=true` and `FEEDBACK_DEFAULT_CHANNEL=in_app`
 
 ## Development workflow
 1. Create or claim an issue
