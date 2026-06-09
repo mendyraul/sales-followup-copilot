@@ -95,6 +95,7 @@ Core focus areas:
 - follow-up sequence logic
 - queue prioritization
 - stale/hot lead detection
+- hot-lead flagging
 - opt-out safety checks
 
 ## Continuous Integration
@@ -139,6 +140,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - [ ] Lead CRUD
 - [ ] Pipeline/status tracking
 - [ ] Queue UI and next-action logic
+- [ ] Hot-lead flags and review lane
 - [ ] Draft generation + review workflow
 - [ ] Manual QA checklist
 - [ ] Deployment and environment docs
