@@ -121,6 +121,12 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
+## Draft review workflow
+- Draft review should stay human-controlled even when generation gets faster.
+- `lib/draftWorkflow.ts` provides `createDraft`, `approveDraft`, `editDraft`, and `rejectDraft` helpers for a strict pending -> approved/rejected revision flow.
+- Editing a draft preserves lineage by superseding the prior revision and creating a fresh pending version (`draft-id-v2`, etc.).
+- Rejections require a reason so manual QA and future coaching have an auditable explanation.
+
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
