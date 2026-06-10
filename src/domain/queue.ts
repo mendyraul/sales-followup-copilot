@@ -1,14 +1,103 @@
-import type { Lead } from './lead';
+import type { Lead, LeadStatus } from './lead';
 
-export function nextActionScore(lead: Lead, now = new Date()): number {
-  const updated = new Date(lead.updatedAt).getTime();
-  const ageHours = Math.max(0, (now.getTime() - updated) / 3600000);
-  const statusWeight = lead.status === 'hot' ? 100 : lead.status === 'replied' ? 60 : lead.status === 'contacted' ? 40 : 20;
-  return statusWeight + Math.min(72, ageHours);
+export type NextActionBand = 'urgent' | 'today' | 'soon';
+
+export type NextAction = {
+  score: number;
+  band: NextActionBand;
+  label: string;
+  reason: string;
+  ageHours: number;
+  followUpStage: string;
+};
+
+const statusWeights: Record<LeadStatus, number> = {
+  hot: 100,
+  replied: 60,
+  contacted: 40,
+  new: 20,
+  won: 0,
+  lost: 0,
+};
+
+function ageHoursSince(updatedAt: string, now: Date): number {
+  return Math.max(0, (now.getTime() - new Date(updatedAt).getTime()) / 3600000);
 }
 
-export function needsAttention(leads: Lead[]): Lead[] {
+function followUpStageFor(lead: Lead): string {
+  switch (lead.status) {
+    case 'new':
+      return 'draft the first outreach';
+    case 'contacted':
+      return 'review for a reply or send a nudge';
+    case 'replied':
+      return 'prepare the next personalized response';
+    case 'hot':
+      return 'jump to a high-priority follow-up';
+    case 'won':
+      return 'no follow-up needed';
+    case 'lost':
+      return 'closed out';
+  }
+}
+
+function bandFor(score: number): NextActionBand {
+  if (score >= 100) return 'urgent';
+  if (score >= 60) return 'today';
+  return 'soon';
+}
+
+function labelFor(lead: Lead, band: NextActionBand): string {
+  if (lead.status === 'hot') return 'Call or send a high-touch follow-up now';
+  if (lead.status === 'replied') return band === 'urgent' ? 'Reply while momentum is hot' : 'Draft the next response';
+  if (lead.status === 'contacted') return band === 'urgent' ? 'Send a nudge today' : 'Check for a response and queue a follow-up';
+  return 'Start the first outreach';
+}
+
+function reasonFor(lead: Lead, ageHours: number, band: NextActionBand): string {
+  const roundedAge = Math.round(ageHours);
+
+  if (lead.status === 'hot') {
+    return `Hot lead sitting ${roundedAge}h since the last touch, so it should be handled before the regular queue.`;
+  }
+
+  if (lead.status === 'replied') {
+    return band === 'urgent'
+      ? `Lead replied and has been waiting ${roundedAge}h, so the window for a strong response is closing.`
+      : `Lead replied ${roundedAge}h ago, so the next personalized response should be prepared soon.`;
+  }
+
+  if (lead.status === 'contacted') {
+    return band === 'urgent'
+      ? `Lead was contacted ${roundedAge}h ago without movement, so it is ready for a same-day nudge.`
+      : `Lead was contacted ${roundedAge}h ago, so it belongs in the active follow-up queue.`;
+  }
+
+  return `New lead has waited ${roundedAge}h without a first touch, so the first outreach should be drafted.`;
+}
+
+export function getNextAction(lead: Lead, now = new Date()): NextAction {
+  const ageHours = ageHoursSince(lead.updatedAt, now);
+  const score = statusWeights[lead.status] + Math.min(72, ageHours);
+  const band = bandFor(score);
+
+  return {
+    score,
+    band,
+    label: labelFor(lead, band),
+    reason: reasonFor(lead, ageHours, band),
+    ageHours,
+    followUpStage: followUpStageFor(lead),
+  };
+}
+
+export function nextActionScore(lead: Lead, now = new Date()): number {
+  return getNextAction(lead, now).score;
+}
+
+export function needsAttention(leads: Lead[], now = new Date()): Array<Lead & { nextAction: NextAction }> {
   return [...leads]
-    .filter(l => ['new', 'contacted', 'replied', 'hot'].includes(l.status))
-    .sort((a, b) => nextActionScore(b) - nextActionScore(a));
+    .filter((lead) => ['new', 'contacted', 'replied', 'hot'].includes(lead.status))
+    .map((lead) => ({ ...lead, nextAction: getNextAction(lead, now) }))
+    .sort((a, b) => b.nextAction.score - a.nextAction.score);
 }
