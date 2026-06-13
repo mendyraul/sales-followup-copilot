@@ -3,6 +3,7 @@ import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
+import { parseLeadCsvPreview } from '../domain/csv-import';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 
@@ -10,6 +11,12 @@ const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
+const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
+Avery Smith,avery@example.com,+1-555-0101,Referral,new
+Jordan Lee,jordan@example.com,,Website,contacted
+Pat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot
+Jordan Lee,jordan@example.com,+1-555-0102,,replied
+No Email,,+1-555-0110,Tradeshow,new`);
 
 export default function HomePage() {
   return (
@@ -25,6 +32,7 @@ export default function HomePage() {
         <MetricCard label="Timeline events" value={String(timelineSummary.totalEvents)} helper="Status, draft, and review history by lead" />
         <MetricCard label="Structured notes" value={String(timelineSummary.totalNotes)} helper="Operator notes attached to active leads" />
         <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
+        <MetricCard label="CSV preview rows" value={String(csvPreview.validRows.length)} helper="Validated leads ready for import" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
       </section>
 
@@ -133,6 +141,70 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>CSV import preview</h2>
+          <p style={mutedStyle}>
+            Operators can sanity-check bulk lead uploads before touching the database: required fields, duplicate emails, status normalization, and row-level validation stay visible.
+          </p>
+
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginBottom: 16 }}>
+            <MetricCard label="Valid rows" value={String(csvPreview.validRows.length)} helper="Rows ready for import" />
+            <MetricCard label="Row issues" value={String(csvPreview.issues.length)} helper="Rows blocked before import" />
+            <MetricCard label="Duplicates" value={String(csvPreview.duplicateEmails.length)} helper="Emails repeated in the file" />
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d8dee4' }}>
+                  <th style={tableHeadStyle}>Row</th>
+                  <th style={tableHeadStyle}>Lead</th>
+                  <th style={tableHeadStyle}>Status</th>
+                  <th style={tableHeadStyle}>Source</th>
+                  <th style={tableHeadStyle}>Warnings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {csvPreview.validRows.map((row) => (
+                  <tr key={`${row.rowNumber}-${row.email}`} style={{ borderBottom: '1px solid #f0f3f6' }}>
+                    <td style={tableCellStyle}>{row.rowNumber}</td>
+                    <td style={tableCellStyle}>
+                      <strong>{row.name}</strong>
+                      <div style={mutedStyle}>{row.email}</div>
+                    </td>
+                    <td style={tableCellStyle}>{row.status.toUpperCase()}</td>
+                    <td style={tableCellStyle}>{row.source || '—'}</td>
+                    <td style={tableCellStyle}>{row.warnings.join(' · ') || 'Ready to import'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Import checks</h2>
+            <ul>
+              <li>Required headers: <code>name</code>, <code>email</code></li>
+              <li>Optional headers: <code>phone</code>, <code>source</code>, <code>status</code></li>
+              <li>Missing headers: {csvPreview.missingHeaders.join(', ') || 'none'}</li>
+              <li>Unknown headers: {csvPreview.unknownHeaders.join(', ') || 'none'}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Blocked rows</h2>
+            <ul>
+              {csvPreview.issues.map((issue) => (
+                <li key={`${issue.rowNumber}-${issue.message}`}>Row {issue.rowNumber}: {issue.message}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
@@ -188,4 +260,15 @@ const miniPillStyle: React.CSSProperties = {
   padding: '2px 8px',
   fontSize: 11,
   fontWeight: 600,
+};
+
+const tableHeadStyle: React.CSSProperties = {
+  padding: '8px 10px',
+  fontSize: 12,
+  color: '#57606a',
+};
+
+const tableCellStyle: React.CSSProperties = {
+  padding: '10px',
+  verticalAlign: 'top',
 };
