@@ -33,3 +33,52 @@ export function normalizeFeedback(input: FeedbackInput) {
     resolved: false,
   };
 }
+
+export type FeedbackRecord = ReturnType<typeof normalizeFeedback> & {
+  id: string;
+  createdAt: string;
+  reviewer: string;
+};
+
+export function summarizeFeedback(records: FeedbackRecord[]) {
+  const total = records.length;
+  const categories = {
+    ux: 0,
+    bug: 0,
+    result_quality: 0,
+    other: 0,
+  } satisfies Record<FeedbackCategory, number>;
+  const sentiments = {
+    positive: 0,
+    neutral: 0,
+    negative: 0,
+  } satisfies Record<FeedbackSentiment, number>;
+
+  let scoredCount = 0;
+  let scoredTotal = 0;
+
+  for (const record of records) {
+    categories[record.category] += 1;
+    sentiments[record.sentiment] += 1;
+
+    if (record.score !== undefined) {
+      scoredCount += 1;
+      scoredTotal += record.score;
+    }
+  }
+
+  return {
+    total,
+    categories,
+    sentiments,
+    averageScore: scoredCount ? Number((scoredTotal / scoredCount).toFixed(1)) : null,
+    latestAt: records[0]?.createdAt,
+  };
+}
+
+export function recentFeedback(records: FeedbackRecord[], limit = 3) {
+  return [...records]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
+}
+

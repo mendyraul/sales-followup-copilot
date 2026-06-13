@@ -3,11 +3,12 @@
 Manual-safe feedback capture for QA and product iteration.
 
 ## What gets stored
-- `rating` from 1-5
-- optional `category`: `ux`, `quality`, `bug`, `other`
-- optional freeform `comments`
+- required `category`: `ux`, `result_quality`, `bug`, `other`
+- required `sentiment`: `positive`, `neutral`, `negative`
+- required freeform `message`
+- optional 1-5 `score`
 - optional `leadId` link back to a lead
-- `channel` source tag (default `in_app`)
+- `source` tag (`in_app`, `email`, or `internal_note`)
 - optional structured `metadata`
 
 ## Environment variables
@@ -19,3 +20,4 @@ Manual-safe feedback capture for QA and product iteration.
 2. Normalize and validate the payload before writing it.
 3. Store it in `FeedbackEntry` for later QA triage.
 4. Review trends weekly to improve prompts, UX, or guardrails.
+5. Use the seeded feedback inbox on `/` to confirm the review loop stays visible in manual mode before any live send path exists.

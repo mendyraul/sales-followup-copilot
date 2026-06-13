@@ -1,12 +1,14 @@
 import React from 'react';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
+import { demoFeedbackEntries } from '../data/demoFeedback';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
+import { recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -15,6 +17,8 @@ const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
+const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
+const latestFeedback = recentFeedback(demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
@@ -39,6 +43,7 @@ export default function HomePage() {
         <MetricCard label="Structured notes" value={String(timelineSummary.totalNotes)} helper="Operator notes attached to active leads" />
         <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
         <MetricCard label="CSV preview rows" value={String(csvPreview.validRows.length)} helper="Validated leads ready for import" />
+        <MetricCard label="Feedback entries" value={String(feedbackSummary.total)} helper="Operator + QA input captured for iteration" />
         <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
         <MetricCard label="Deploy checkpoints" value={String(deploymentSummary.totalItems)} helper="Release guardrails for manual-safe rollout" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
@@ -231,6 +236,51 @@ export default function HomePage() {
               <li>Preflight commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Database step: <code>npx prisma migrate deploy</code></li>
               <li>Rollback rule: keep the previous good branch or artifact ready before promoting the next stacked slice.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Feedback capture inbox</h2>
+          <p style={mutedStyle}>
+            Reviewers can flag UX, bug, or draft-quality issues without leaving the manual-safe workflow. The seeded inbox keeps score, sentiment, source, and linked lead context visible.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {latestFeedback.map((entry) => (
+              <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <strong>{entry.category.replace('_', ' ')}</strong>
+                  <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
+                </div>
+                <div style={{ marginTop: 8 }}>{entry.message}</div>
+                <div style={{ ...mutedStyle, marginTop: 8 }}>
+                  {entry.reviewer} · {entry.source} · score {entry.score ?? 'n/a'} · {formatTimestamp(entry.createdAt)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Feedback summary</h2>
+            <ul>
+              <li>Total entries: {feedbackSummary.total}</li>
+              <li>Average score: {feedbackSummary.averageScore ?? 'n/a'}</li>
+              <li>Latest capture: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
+              <li>Categories: UX {feedbackSummary.categories.ux}, bugs {feedbackSummary.categories.bug}, draft quality {feedbackSummary.categories.result_quality}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Operator prompts</h2>
+            <ul>
+              <li>Capture draft-quality feedback before toggling any send mode.</li>
+              <li>Log bug feedback when CSV import, queue order, or notes look wrong.</li>
+              <li>Use repeated low scores to decide which prompts or UI slices need the next fix.</li>
             </ul>
           </div>
         </div>

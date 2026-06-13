@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeFeedback } from '../domain/feedback';
+import { demoFeedbackEntries } from '../data/demoFeedback';
+import { normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -33,5 +34,32 @@ describe('feedback normalization', () => {
         score: 6,
       })
     ).toThrow('Feedback score must be between 1 and 5');
+  });
+
+  it('summarizes seeded feedback for operator review', () => {
+    expect(summarizeFeedback(demoFeedbackEntries)).toEqual({
+      total: 3,
+      categories: {
+        ux: 1,
+        bug: 1,
+        result_quality: 1,
+        other: 0,
+      },
+      sentiments: {
+        positive: 1,
+        neutral: 1,
+        negative: 1,
+      },
+      averageScore: 3.3,
+      latestAt: '2026-06-10T07:08:00.000Z',
+    });
+  });
+
+  it('orders recent feedback newest-first', () => {
+    expect(recentFeedback(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
+      'feedback-demo-003',
+      'feedback-demo-002',
+      'feedback-demo-001',
+    ]);
   });
 });

@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import HomePage from '../app/page';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
+import { demoFeedbackEntries } from '../data/demoFeedback';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
+import { recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -21,6 +23,8 @@ describe('operator workflow regression', () => {
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
     const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
+    const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
+    const latestFeedback = recentFeedback(demoFeedbackEntries);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
@@ -57,6 +61,17 @@ describe('operator workflow regression', () => {
       watchItems: 1,
       areas: ['environment', 'database', 'application', 'rollback'],
     });
+    expect(feedbackSummary).toEqual({
+      total: 3,
+      categories: { ux: 1, bug: 1, result_quality: 1, other: 0 },
+      sentiments: { positive: 1, neutral: 1, negative: 1 },
+      averageScore: 3.3,
+      latestAt: '2026-06-10T07:08:00.000Z',
+    });
+    expect(latestFeedback[0]).toMatchObject({
+      id: 'feedback-demo-003',
+      sentiment: 'negative',
+    });
 
     expect(timelineSummary).toMatchObject({
       totalEvents: 5,
@@ -85,6 +100,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Deployment readiness');
     expect(html).toContain('Release summary');
     expect(html).toContain('Deploy checkpoints');
+    expect(html).toContain('Feedback capture inbox');
+    expect(html).toContain('Feedback summary');
+    expect(html).toContain('Feedback entries');
     expect(html).toContain('CSV import preview');
     expect(html).toContain('CSV preview rows');
     expect(html).toContain('Manual QA checks');

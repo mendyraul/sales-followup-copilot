@@ -106,6 +106,7 @@ Core focus areas:
 - queue prioritization
 - stale/hot lead detection
 - CSV import parsing/preview validation
+- feedback normalization, summary metrics, and seeded inbox review flow
 - notes/timeline helpers plus seeded operator-history coverage
 - audit-log coverage and seeded operator workflow regressions
 - opt-out safety checks
@@ -137,7 +138,8 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 
 ## Feedback capture
 - Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
-- Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
+- The dashboard now includes a seeded feedback inbox plus summary metrics so reviewers can see draft-quality, UX, and bug feedback in the same manual-safe workspace.
+- Capture shape: category, sentiment, freeform message, optional 1-5 score, optional `leadId`, source channel, and structured metadata.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
 ## Environment variables
