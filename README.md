@@ -96,6 +96,7 @@ Core focus areas:
 - follow-up sequence logic
 - queue prioritization
 - stale/hot lead detection
+- audit-log coverage and seeded operator workflow regressions
 - opt-out safety checks
 
 ## Continuous Integration

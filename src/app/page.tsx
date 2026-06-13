@@ -1,3 +1,4 @@
+import React from 'react';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
