@@ -1,15 +1,18 @@
 import React from 'react';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
+import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
+import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
+const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
 Avery Smith,avery@example.com,+1-555-0101,Referral,new
@@ -33,6 +36,7 @@ export default function HomePage() {
         <MetricCard label="Structured notes" value={String(timelineSummary.totalNotes)} helper="Operator notes attached to active leads" />
         <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
         <MetricCard label="CSV preview rows" value={String(csvPreview.validRows.length)} helper="Validated leads ready for import" />
+        <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
       </section>
 
@@ -137,6 +141,49 @@ export default function HomePage() {
               <li>Confirm each lead card shows a recent note preview.</li>
               <li>Confirm timeline events stay newest-first per lead.</li>
               <li>Confirm draft review history appears without enabling live sending.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Manual QA checklist</h2>
+          <p style={mutedStyle}>
+            A release-friendly checklist for demo runs and branch promotion so operators can verify the MVP without enabling live outbound delivery.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {demoManualQaChecklist.map((item) => (
+              <li key={item.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <strong>{item.title}</strong>
+                  <span style={item.status === 'ready' ? pillStyle : warningPillStyle}>{item.status}</span>
+                </div>
+                <div style={{ ...mutedStyle, marginTop: 6 }}>{item.whyItMatters}</div>
+                <div style={{ marginTop: 8 }}><strong>Verify:</strong> {item.verification}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Checklist coverage</h2>
+            <ul>
+              <li>Total checkpoints: {manualQaSummary.totalItems}</li>
+              <li>Ready checkpoints: {manualQaSummary.readyItems}</li>
+              <li>Watch items: {manualQaSummary.watchItems}</li>
+              <li>Areas covered: {manualQaSummary.areas.join(', ')}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Runbook</h2>
+            <ul>
+              <li>Checklist doc: <code>docs/manual-qa.md</code></li>
+              <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
+              <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
             </ul>
           </div>
         </div>
@@ -248,6 +295,15 @@ const pillStyle: React.CSSProperties = {
   borderRadius: 999,
   background: '#ddf4ff',
   color: '#0550ae',
+  padding: '4px 10px',
+  fontSize: 12,
+  fontWeight: 600,
+};
+
+const warningPillStyle: React.CSSProperties = {
+  borderRadius: 999,
+  background: '#fff8c5',
+  color: '#9a6700',
   padding: '4px 10px',
   fontSize: 12,
   fontWeight: 600,
