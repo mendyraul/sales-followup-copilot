@@ -96,6 +96,7 @@ Core focus areas:
 - follow-up sequence logic
 - queue prioritization
 - stale/hot lead detection
+- notes/timeline helpers plus seeded operator-history coverage
 - audit-log coverage and seeded operator workflow regressions
 - opt-out safety checks
 
@@ -117,6 +118,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `Lead.notes` stays available for quick summary text.
 - `LeadNote` supports structured per-lead notes with timestamps.
 - `LeadEvent` uses normalized `LeadEventType` values for an auditable activity timeline.
+- The dashboard now renders seeded per-lead note previews plus newest-first timeline events so manual QA can verify history without touching live outbound flows.
 
 ## Audit log
 - `AuditLog` is the canonical persistence model for operator-visible action history.
