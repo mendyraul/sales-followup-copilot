@@ -121,6 +121,12 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
+## AI provider abstraction
+- `lib/aiProvider.ts` is the single adapter entry point for draft generation.
+- `mock` is the safe default and returns deterministic local drafts for demos, tests, and manual QA.
+- `openai` is supported behind `AI_API_KEY` and keeps provider-specific HTTP wiring out of the rest of the app.
+- Future providers should implement the same `AiProvider` contract so routing logic stays isolated.
+
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
