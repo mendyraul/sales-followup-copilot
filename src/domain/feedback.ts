@@ -56,6 +56,8 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
 
   let scoredCount = 0;
   let scoredTotal = 0;
+  let latestAt: string | undefined;
+  let latestTimestamp = Number.NEGATIVE_INFINITY;
 
   for (const record of records) {
     categories[record.category] += 1;
@@ -65,6 +67,12 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
       scoredCount += 1;
       scoredTotal += record.score;
     }
+
+    const recordTimestamp = new Date(record.createdAt).getTime();
+    if (Number.isFinite(recordTimestamp) && recordTimestamp > latestTimestamp) {
+      latestTimestamp = recordTimestamp;
+      latestAt = record.createdAt;
+    }
   }
 
   return {
@@ -72,7 +80,7 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
     categories,
     sentiments,
     averageScore: scoredCount ? Number((scoredTotal / scoredCount).toFixed(1)) : null,
-    latestAt: records[0]?.createdAt,
+    latestAt: latestAt ?? null,
   };
 }
 

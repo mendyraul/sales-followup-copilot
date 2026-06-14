@@ -51,7 +51,7 @@ describe('feedback normalization', () => {
         negative: 1,
       },
       averageScore: 3.3,
-      latestAt: '2026-06-10T07:08:00.000Z',
+      latestAt: '2026-06-10T07:32:00.000Z',
     });
   });
 
@@ -61,5 +61,13 @@ describe('feedback normalization', () => {
       'feedback-demo-002',
       'feedback-demo-001',
     ]);
+  });
+
+  it('reports latestAt from the newest record even when input order drifts', () => {
+    const outOfOrder = [demoFeedbackEntries[0], demoFeedbackEntries[2], demoFeedbackEntries[1]];
+
+    expect(summarizeFeedback(outOfOrder)).toMatchObject({
+      latestAt: '2026-06-10T07:32:00.000Z',
+    });
   });
 });

@@ -66,7 +66,7 @@ describe('operator workflow regression', () => {
       categories: { ux: 1, bug: 1, result_quality: 1, other: 0 },
       sentiments: { positive: 1, neutral: 1, negative: 1 },
       averageScore: 3.3,
-      latestAt: '2026-06-10T07:08:00.000Z',
+      latestAt: '2026-06-10T07:32:00.000Z',
     });
     expect(latestFeedback[0]).toMatchObject({
       id: 'feedback-demo-003',
