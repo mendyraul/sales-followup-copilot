@@ -27,6 +27,21 @@ export interface AiProvider {
   generateDraft(input: DraftGenerationInput): Promise<DraftGenerationResult>;
 }
 
+type OpenAiResponsesPayload = {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+};
+
+type OpenAiDraftPayload = {
+  subject?: string;
+  body?: string;
+};
+
 const SUPPORTED_PROVIDERS: AiProviderId[] = ['mock', 'openai'];
 
 export function normalizeProvider(provider: string | undefined): AiProviderId {
@@ -148,15 +163,8 @@ function createOpenAiProvider(config: AiProviderConfig): AiProvider {
         throw new Error(`OpenAI draft generation failed with status ${response.status}`);
       }
 
-      const payload = (await response.json()) as {
-        output_text?: string;
-      };
-
-      if (!payload.output_text) {
-        throw new Error('OpenAI draft generation returned no output_text payload.');
-      }
-
-      const parsed = JSON.parse(payload.output_text) as { subject?: string; body?: string };
+      const payload = (await response.json()) as OpenAiResponsesPayload;
+      const parsed = extractOpenAiDraftPayload(payload);
       const subject = parsed.subject?.trim();
       const body = parsed.body?.trim();
 
@@ -172,6 +180,27 @@ function createOpenAiProvider(config: AiProviderConfig): AiProvider {
       };
     }
   };
+}
+
+function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraftPayload {
+  const candidateTexts = [payload.output_text]
+    .concat(
+      (payload.output ?? []).flatMap((item) =>
+        (item.content ?? [])
+          .filter((entry) => entry.type === 'output_text' && typeof entry.text === 'string')
+          .map((entry) => entry.text as string)
+      )
+    )
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  const draftText = candidateTexts[0];
+
+  if (!draftText) {
+    throw new Error('OpenAI draft generation returned no output_text payload.');
+  }
+
+  return JSON.parse(draftText) as OpenAiDraftPayload;
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
