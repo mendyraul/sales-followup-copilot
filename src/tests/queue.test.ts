@@ -12,6 +12,7 @@ describe('next action queue', () => {
     const queue = needsAttention(leads, now);
     expect(queue[0].id).toBe('2');
     expect(queue[0].nextAction.label).toContain('high-touch');
+    expect(queue[0].nextAction.band).toBe('urgent');
   });
 
   it('adds actionable metadata for replied leads', () => {
@@ -53,5 +54,31 @@ describe('next action queue', () => {
     expect(queue[0].id).toBe('reply-aged');
     expect(queue[0].nextAction.band).toBe('today');
     expect(queue[1].nextAction.band).toBe('soon');
+  });
+
+  it('ignores closed-out leads and clamps future timestamps to zero age', () => {
+    const now = new Date('2026-06-10T12:00:00.000Z');
+    const leads = [
+      {
+        id: 'future-new',
+        name: 'Future New',
+        status: 'new',
+        createdAt: '2026-06-10T12:00:00.000Z',
+        updatedAt: '2026-06-11T12:00:00.000Z',
+      },
+      {
+        id: 'won-lead',
+        name: 'Won Lead',
+        status: 'won',
+        createdAt: '2026-06-08T12:00:00.000Z',
+        updatedAt: '2026-06-08T12:00:00.000Z',
+      },
+    ] as any;
+
+    const queue = needsAttention(leads, now);
+    expect(queue).toHaveLength(1);
+    expect(queue[0].id).toBe('future-new');
+    expect(queue[0].nextAction.ageHours).toBe(0);
+    expect(queue[0].nextAction.band).toBe('soon');
   });
 });

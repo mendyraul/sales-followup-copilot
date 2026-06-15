@@ -97,6 +97,7 @@ Core focus areas:
 - stale/hot lead detection
 - hot-lead flagging
 - opt-out safety checks
+- future-timestamp clamping and closed-lead queue exclusion
 
 ## Continuous Integration
 GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integration-branch pushes to:
