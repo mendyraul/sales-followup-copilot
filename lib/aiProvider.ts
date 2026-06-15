@@ -200,7 +200,12 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
     throw new Error('OpenAI draft generation returned no output_text payload.');
   }
 
-  return JSON.parse(draftText) as OpenAiDraftPayload;
+  return JSON.parse(stripJsonCodeFence(draftText)) as OpenAiDraftPayload;
+}
+
+function stripJsonCodeFence(value: string): string {
+  const fencedMatch = value.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
+  return fencedMatch ? fencedMatch[1].trim() : value;
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {

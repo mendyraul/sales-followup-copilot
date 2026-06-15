@@ -111,6 +111,30 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('next safe step');
   });
 
+  it('accepts JSON wrapped in markdown code fences', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: ['```json', JSON.stringify({
+          subject: 'Quick follow-up for Jordan',
+          body: 'Hi Jordan, here is the reviewed next step.'
+        }), '```'].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('reviewed next step');
+  });
+
   it('rejects whitespace-only OpenAI draft payloads', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
