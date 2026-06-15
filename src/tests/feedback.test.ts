@@ -25,7 +25,16 @@ describe('feedback normalization', () => {
     ).toThrow('Feedback message is required');
   });
 
-  it('rejects out-of-range score', () => {
+  it('rejects non-integer or out-of-range score', () => {
+    expect(() =>
+      normalizeFeedback({
+        category: 'result_quality',
+        sentiment: 'negative',
+        message: 'Bad draft quality',
+        score: 2.5,
+      })
+    ).toThrow('Feedback score must be an integer between 1 and 5');
+
     expect(() =>
       normalizeFeedback({
         category: 'result_quality',
@@ -33,7 +42,7 @@ describe('feedback normalization', () => {
         message: 'Bad draft quality',
         score: 6,
       })
-    ).toThrow('Feedback score must be between 1 and 5');
+    ).toThrow('Feedback score must be an integer between 1 and 5');
   });
 
   it('summarizes seeded feedback for operator review', () => {

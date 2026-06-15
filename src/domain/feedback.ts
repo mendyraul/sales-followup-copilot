@@ -18,8 +18,11 @@ export function normalizeFeedback(input: FeedbackInput) {
     throw new Error('Feedback message is required');
   }
 
-  if (input.score !== undefined && (input.score < 1 || input.score > 5)) {
-    throw new Error('Feedback score must be between 1 and 5');
+  if (
+    input.score !== undefined &&
+    (!Number.isInteger(input.score) || input.score < 1 || input.score > 5)
+  ) {
+    throw new Error('Feedback score must be an integer between 1 and 5');
   }
 
   return {
