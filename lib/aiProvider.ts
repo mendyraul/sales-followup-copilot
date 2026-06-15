@@ -157,15 +157,17 @@ function createOpenAiProvider(config: AiProviderConfig): AiProvider {
       }
 
       const parsed = JSON.parse(payload.output_text) as { subject?: string; body?: string };
+      const subject = parsed.subject?.trim();
+      const body = parsed.body?.trim();
 
-      if (!parsed.subject || !parsed.body) {
+      if (!subject || !body) {
         throw new Error('OpenAI draft generation returned invalid JSON payload.');
       }
 
       return {
         provider: 'openai',
-        subject: parsed.subject,
-        body: parsed.body,
+        subject,
+        body,
         warnings: []
       };
     }
