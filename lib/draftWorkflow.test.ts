@@ -36,7 +36,7 @@ describe('draft review workflow', () => {
 
     expect(approved.status).toBe('approved')
     expect(approved.approvedAt?.toISOString()).toBe('2026-06-10T08:31:00.000Z')
-    expect(approved.reviewLog.at(-1)).toMatchObject({
+    expect(approved.reviewLog[approved.reviewLog.length - 1]).toMatchObject({
       decision: 'approve',
       actor: 'raul',
       notes: 'Looks good. Keep the CTA.',
@@ -60,7 +60,7 @@ describe('draft review workflow', () => {
     })
 
     expect(previousDraft.supersededById).toBe('draft-1-v2')
-    expect(previousDraft.reviewLog.at(-1)).toMatchObject({
+    expect(previousDraft.reviewLog[previousDraft.reviewLog.length - 1]).toMatchObject({
       decision: 'edit',
       actor: 'raul',
       nextDraftId: 'draft-1-v2',
@@ -89,7 +89,7 @@ describe('draft review workflow', () => {
 
     expect(rejected.status).toBe('rejected')
     expect(rejected.rejectionReason).toBe('Too salesy for this lead.')
-    expect(rejected.reviewLog.at(-1)).toMatchObject({
+    expect(rejected.reviewLog[rejected.reviewLog.length - 1]).toMatchObject({
       decision: 'reject',
       actor: 'raul',
       notes: 'Too salesy for this lead.',
