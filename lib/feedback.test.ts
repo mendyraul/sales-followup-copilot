@@ -33,6 +33,24 @@ describe('normalizeFeedback', () => {
     })
   })
 
+  it('falls back to in_app when both explicit and fallback channels are blank', () => {
+    expect(normalizeFeedback({ rating: 3, channel: '   ' }, '   ')).toEqual({
+      leadId: null,
+      rating: 3,
+      category: null,
+      comments: null,
+      channel: 'in_app',
+      metadata: null,
+    })
+  })
+
+  it('preserves object metadata and drops invalid metadata payloads', () => {
+    expect(normalizeFeedback({ rating: 4, metadata: { path: 'manual-qa' } }).metadata).toEqual({
+      path: 'manual-qa',
+    })
+    expect(normalizeFeedback({ rating: 4, metadata: ['bad'] as unknown as Record<string, unknown> }).metadata).toBeNull()
+  })
+
   it('rejects invalid ratings', () => {
     expect(() => normalizeFeedback({ rating: 0 })).toThrow(/rating/)
     expect(() => normalizeFeedback({ rating: 6 })).toThrow(/rating/)

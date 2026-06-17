@@ -12,6 +12,16 @@ describe('runtime mode safety defaults', () => {
     expect(isTestMode('something-else')).toBe(true)
   })
 
+  it('normalizes casing and whitespace before evaluating live mode', () => {
+    expect(getSendMode(' LIVE ')).toBe('live')
+    expect(isTestMode(' LIVE ')).toBe(false)
+  })
+
+  it('treats blank values as manual/test mode', () => {
+    expect(getSendMode('   ')).toBe('manual')
+    expect(isTestMode('   ')).toBe(true)
+  })
+
   it('enables live mode only when explicitly set to live', () => {
     expect(getSendMode('live')).toBe('live')
     expect(isTestMode('live')).toBe(false)

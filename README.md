@@ -90,7 +90,11 @@ Open `http://localhost:3000`.
 npm test -- --run
 ```
 
-Core focus areas:
+Current automated coverage includes:
+- runtime safety defaults for `SEND_MODE`
+- feedback normalization and validation paths
+
+Core focus areas still to expand:
 - status transitions
 - follow-up sequence logic
 - queue prioritization
