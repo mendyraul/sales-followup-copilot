@@ -10,6 +10,8 @@ export type QueueItem = {
   reason: string;
 };
 
+export type QueueGroups = Record<QueuePriority, QueueItem[]>;
+
 const ACTIVE_STATUSES = ['new', 'contacted', 'replied', 'hot'] as const;
 type ActiveLeadStatus = (typeof ACTIVE_STATUSES)[number];
 
@@ -63,6 +65,16 @@ export function buildQueue(leads: Lead[], now = new Date()): QueueItem[] {
       } satisfies QueueItem;
     })
     .sort((a, b) => b.score - a.score);
+}
+
+export function groupQueueByPriority(queue: QueueItem[]): QueueGroups {
+  return queue.reduce<QueueGroups>(
+    (groups, item) => {
+      groups[item.priority].push(item);
+      return groups;
+    },
+    { high: [], medium: [], low: [] }
+  );
 }
 
 export function needsAttention(leads: Lead[], now = new Date()): Lead[] {

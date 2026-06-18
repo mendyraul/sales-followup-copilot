@@ -139,6 +139,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - [ ] Lead CRUD
 - [ ] Pipeline/status tracking
 - [ ] Queue UI and next-action logic
+  - priority lanes split work into act-now / queue-next / warm-up buckets for manual triage
 - [ ] Draft generation + review workflow
 - [ ] Manual QA checklist
 - [ ] Deployment and environment docs
