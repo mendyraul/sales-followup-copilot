@@ -1,3 +1,5 @@
+import { buildFollowupPromptTemplate } from './followupPromptTemplate';
+
 export type AiProviderId = 'mock' | 'openai';
 
 export type DraftGenerationInput = {
@@ -209,14 +211,5 @@ function stripJsonCodeFence(value: string): string {
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
-  const lines = [
-    `Lead name: ${input.leadName}`,
-    `Company: ${input.companyName ?? 'unknown'}`,
-    `Objective: ${input.objective ?? 'follow up on the last sales conversation'}`,
-    `Tone: ${input.tone ?? 'friendly'}`,
-    `Recent context: ${input.recentContext ?? 'none provided'}`,
-    'Constraints: manual-safe draft only, no fake promises, no discounting unless explicitly requested, keep it concise.'
-  ];
-
-  return lines.join('\n');
+  return buildFollowupPromptTemplate(input);
 }

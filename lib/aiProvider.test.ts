@@ -166,9 +166,10 @@ describe('buildOpenAiPrompt', () => {
       tone: 'direct'
     });
 
-    expect(prompt).toContain('Lead name: Jordan');
-    expect(prompt).toContain('Company: Northwind');
-    expect(prompt).toContain('Recent context: they want implementation timing');
-    expect(prompt).toContain('Tone: direct');
+    expect(prompt).toContain('- Lead name: Jordan');
+    expect(prompt).toContain('- Company: Northwind');
+    expect(prompt).toContain('- Recent context: they want implementation timing');
+    expect(prompt).toContain('- Tone: direct');
+    expect(prompt).toContain('Output requirements:');
   });
 });

@@ -129,6 +129,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 
 ## First follow-up draft generation
 - `lib/firstFollowupDraft.ts` builds the first-touch follow-up payload from lead context, desired next step, and tone.
+- `lib/followupPromptTemplate.ts` centralizes the reusable prompt template so provider adapters keep the same manual-safe constraints and output contract.
 - The helper routes through `lib/aiProvider.ts`, so `AI_PROVIDER=mock` stays the deterministic/manual-safe default for demos and QA.
 - Every generated draft returns a human review checklist before outbound delivery.
 
