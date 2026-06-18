@@ -91,10 +91,17 @@ Open `http://localhost:3000`.
 npm test -- --run
 ```
 
+Useful targeted regression commands:
+```bash
+npm test -- --run src/tests/queue.test.ts src/tests/operator-workflow.test.tsx
+npm run build
+```
+
 Core focus areas:
 - status transitions
 - follow-up sequence logic
-- queue prioritization
+- queue prioritization, including stale-vs-fresh ordering within the same status bucket
+- exclusion of won/lost leads from the operator queue
 - stale/hot lead detection
 - notes/timeline helpers plus seeded operator-history coverage
 - audit-log coverage and seeded operator workflow regressions
