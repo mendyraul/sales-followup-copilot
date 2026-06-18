@@ -8,7 +8,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -19,6 +19,7 @@ const queue = needsAttention(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const latestFeedback = recentFeedback(demoFeedbackEntries);
+const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
@@ -193,6 +194,53 @@ export default function HomePage() {
               <li>Checklist doc: <code>docs/manual-qa.md</code></li>
               <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Feedback follow-up queue</h2>
+          <p style={mutedStyle}>
+            Negative or low-score feedback is promoted into a lightweight triage queue so operators know which review notes need action before the next demo.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {feedbackFollowUps.map((entry) => {
+              const lead = demoLeads.find((candidate) => candidate.id === entry.leadId);
+              return (
+                <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <strong>{lead?.name ?? 'Unlinked feedback'}</strong>
+                    <span style={warningPillStyle}>needs follow-up</span>
+                  </div>
+                  <div style={{ ...mutedStyle, marginTop: 6 }}>
+                    {entry.category.replace('_', ' ')} · {entry.source} · score {entry.score ?? 'n/a'}
+                  </div>
+                  <div style={{ marginTop: 8 }}>{entry.message}</div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Triage prompts</h2>
+            <ul>
+              <li>Review negative or score-3-and-below entries before the next demo.</li>
+              <li>Check whether the linked lead still needs a draft, copy tweak, or product bug fix.</li>
+              <li>Keep the queue manual-safe: feedback informs humans, it does not auto-send.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>Queued feedback items: {feedbackFollowUps.length}</li>
+              <li>Newest feedback signal: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
+              <li>Primary source: seeded inbox + summary helpers in <code>src/domain/feedback.ts</code></li>
             </ul>
           </div>
         </div>

@@ -139,6 +139,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 ## Feedback capture
 - Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
 - The dashboard now includes a seeded feedback inbox plus summary metrics so reviewers can see draft-quality, UX, and bug feedback in the same manual-safe workspace.
+- Negative or low-score feedback is also promoted into a lightweight follow-up queue so operators can triage the riskiest items before the next demo.
 - Capture shape: category, sentiment, freeform message, optional 1-5 score, optional `leadId`, source channel, and structured metadata.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 

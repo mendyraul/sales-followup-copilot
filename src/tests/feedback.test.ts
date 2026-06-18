@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -78,5 +78,12 @@ describe('feedback normalization', () => {
     expect(summarizeFeedback(outOfOrder)).toMatchObject({
       latestAt: '2026-06-10T07:32:00.000Z',
     });
+  });
+
+  it('prioritizes negative or low-score feedback for follow-up', () => {
+    expect(feedbackNeedsAttention(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
+      'feedback-demo-003',
+      'feedback-demo-001',
+    ]);
   });
 });

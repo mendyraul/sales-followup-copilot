@@ -93,3 +93,26 @@ export function recentFeedback(records: FeedbackRecord[], limit = 3) {
     .slice(0, limit);
 }
 
+export function feedbackNeedsAttention(records: FeedbackRecord[]) {
+  return [...records]
+    .filter((record) => record.sentiment === 'negative' || (record.score ?? 5) <= 3)
+    .sort((a, b) => {
+      const scoreDelta = (a.score ?? 5) - (b.score ?? 5);
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+
+      const sentimentRank = {
+        negative: 0,
+        neutral: 1,
+        positive: 2,
+      } satisfies Record<FeedbackSentiment, number>;
+      const sentimentDelta = sentimentRank[a.sentiment] - sentimentRank[b.sentiment];
+      if (sentimentDelta !== 0) {
+        return sentimentDelta;
+      }
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+}
+
