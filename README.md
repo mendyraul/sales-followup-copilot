@@ -85,6 +85,59 @@ Expected headers:
 
 Open `http://localhost:3000`.
 
+## Launch README / operator playbook
+
+### What this MVP ships
+- queue-first lead review for stale and hot follow-up candidates
+- AI-assisted draft generation that stays human-reviewed by default
+- timeline, notes, and audit visibility for manual-safe operations
+- local demo/test flows that do not require production credentials
+
+### Launch goals
+This branch is intended to be demoable and testable without enabling live outbound messaging. The success condition is a human operator being able to review leads, generate/edit drafts, and verify history/audit behavior locally before any promotion step.
+
+### Launch readiness checklist
+
+#### Environment
+- [ ] `.env` copied from `.env.example`
+- [ ] `docker compose up -d db` succeeds
+- [ ] `npx prisma migrate dev --name init` succeeds
+- [ ] `npm run dev` boots locally
+
+#### Validation
+- [ ] `npm test -- --run` passes
+- [ ] `npm run build` passes
+- [ ] Dashboard loads with demo or imported lead data
+
+#### Operator flow
+- [ ] Queue shows stale/hot leads in expected order
+- [ ] Draft generation works in manual/test mode
+- [ ] Edit / approve / reject flow remains human-controlled
+- [ ] Notes, timeline, and audit surfaces render expected context
+- [ ] No live provider is enabled by default
+
+### Recommended launch walk-through
+1. Run the automated checks first:
+   ```bash
+   npm test -- --run
+   npm run build
+   ```
+2. Start the app locally with `npm run dev`.
+3. Smoke-test the operator flow:
+   - review the queue ordering
+   - inspect lead notes/timeline context
+   - generate a draft in manual mode
+   - edit, approve, or reject without enabling live send
+4. Confirm audit/history output matches the action taken.
+5. Record any missing behavior before merging or promoting the branch.
+
+### Manual QA focus
+- queue prioritization and stale/hot lead grouping
+- prompt quality and manual-safe wording
+- timeline/history visibility for per-lead context
+- audit coverage for operator-visible actions
+- local-only behavior when credentials are absent
+
 ## Testing
 ```bash
 npm test -- --run
