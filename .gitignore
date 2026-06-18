@@ -4,3 +4,4 @@ dist
 .env
 coverage
 prisma/dev.db
+STATUS.md
