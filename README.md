@@ -127,6 +127,11 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `openai` is supported behind `AI_API_KEY` and keeps provider-specific HTTP wiring out of the rest of the app.
 - Future providers should implement the same `AiProvider` contract so routing logic stays isolated.
 
+## First follow-up draft generation
+- `lib/firstFollowupDraft.ts` builds the first-touch follow-up payload from lead context, desired next step, and tone.
+- The helper routes through `lib/aiProvider.ts`, so `AI_PROVIDER=mock` stays the deterministic/manual-safe default for demos and QA.
+- Every generated draft returns a human review checklist before outbound delivery.
+
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
