@@ -7,8 +7,8 @@ export function nextActionScore(lead: Lead, now = new Date()): number {
   return statusWeight + Math.min(72, ageHours);
 }
 
-export function needsAttention(leads: Lead[]): Lead[] {
+export function needsAttention(leads: Lead[], now = new Date()): Lead[] {
   return [...leads]
     .filter(l => ['new', 'contacted', 'replied', 'hot'].includes(l.status))
-    .sort((a, b) => nextActionScore(b) - nextActionScore(a));
+    .sort((a, b) => nextActionScore(b, now) - nextActionScore(a, now));
 }
