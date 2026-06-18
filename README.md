@@ -20,3 +20,8 @@ MVP scaffold for SMB lead follow-up workflow.
 - No live email/SMS sending enabled
 - No secrets in source control
 - Audit logs required for generated/sent actions
+
+## Stale lead detection
+- `detectStaleLeads()` evaluates leads against a configurable inactivity window
+- Paused and closed leads are intentionally excluded from stale alerts
+- Leads with no contact history are flagged immediately for manual review
