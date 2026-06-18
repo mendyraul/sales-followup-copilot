@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { approveDraft, createDraft, editDraft, rejectDraft } from './draftWorkflow'
+import { approveDraft, createDraft, currentDraftRevision, draftHistory, editDraft, rejectDraft } from './draftWorkflow'
 
 describe('draft review workflow', () => {
   it('creates pending drafts in manual mode by default', () => {
@@ -70,6 +70,40 @@ describe('draft review workflow', () => {
     expect(nextDraft.status).toBe('pending')
     expect(nextDraft.content).toContain('quick next step')
     expect(nextDraft.reviewLog).toHaveLength(1)
+  })
+
+
+
+  it('tracks draft history lineage across revisions', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    const { previousDraft, nextDraft } = editDraft(draft, {
+      actor: 'raul',
+      notes: 'Make it warmer and shorter.',
+      content: 'Wanted to follow up and see if a quick next step makes sense.',
+      now: new Date('2026-06-10T08:32:00.000Z'),
+    })
+
+    const approved = approveDraft(nextDraft, {
+      actor: 'raul',
+      notes: 'Ship this version.',
+      now: new Date('2026-06-10T08:33:00.000Z'),
+    })
+
+    expect(approved.supersedesId).toBe('draft-1')
+    expect(draftHistory([previousDraft, approved], approved.id).map((entry) => entry.id)).toEqual(['draft-1'])
+    expect(currentDraftRevision([previousDraft, approved], previousDraft.id)?.id).toBe('draft-1-v2')
+  })
+
+  it('returns empty history for unknown drafts', () => {
+    expect(draftHistory([], 'missing-draft')).toEqual([])
+    expect(currentDraftRevision([], 'missing-draft')).toBeUndefined()
   })
 
   it('rejects a pending draft and requires a reason for auditability', () => {
