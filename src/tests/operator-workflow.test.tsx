@@ -113,6 +113,8 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Feedback capture inbox');
     expect(html).toContain('Feedback hotspots');
     expect(html).toContain('Repeat issue watchlist');
+    expect(html).toContain('Action hint:');
+    expect(html).toContain('Next step:');
     expect(html).toContain('Feedback summary');
     expect(html).toContain('Feedback entries');
     expect(html).toContain('Open items');

@@ -109,6 +109,30 @@ export type FeedbackHotspot = {
   latestAt: string;
 };
 
+export function feedbackActionHint(record: FeedbackRecord) {
+  if (record.resolved) {
+    return 'Resolved — no further follow-up needed unless new feedback arrives.';
+  }
+
+  if (record.category === 'bug') {
+    return 'Check the linked workflow for a reproducible product bug before the next demo.';
+  }
+
+  if ((record.score ?? 5) <= 2 || record.sentiment === 'negative') {
+    return 'Review the linked draft or queue state with a human before sending anything else.';
+  }
+
+  if (record.category === 'result_quality') {
+    return 'Tighten the draft copy and confirm the next version addresses the reviewer note.';
+  }
+
+  if (record.category === 'ux') {
+    return 'Verify the operator workflow stays obvious without adding automation risk.';
+  }
+
+  return 'Log the note, confirm the context, and decide the next manual-safe follow-up.';
+}
+
 export function feedbackHotspots(records: FeedbackRecord[], limit = 3): FeedbackHotspot[] {
   const grouped = new Map<string, FeedbackHotspot>();
 

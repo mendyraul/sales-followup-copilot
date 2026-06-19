@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -133,5 +133,10 @@ describe('feedback normalization', () => {
     );
 
     expect(feedbackNeedsAttention(resolvedLowScore).map((entry) => entry.id)).toEqual(['feedback-demo-003']);
+  });
+
+  it('generates manual-safe action hints for open and resolved feedback', () => {
+    expect(feedbackActionHint(demoFeedbackEntries[2])).toContain('reproducible product bug');
+    expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
   });
 });

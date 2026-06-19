@@ -8,7 +8,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -223,6 +223,7 @@ export default function HomePage() {
                     {entry.category.replace('_', ' ')} · {entry.source} · score {entry.score ?? 'n/a'}
                   </div>
                   <div style={{ marginTop: 8 }}>{entry.message}</div>
+                  <div style={{ ...mutedStyle, marginTop: 8 }}><strong>Next step:</strong> {feedbackActionHint(entry)}</div>
                 </li>
               );
             })}
@@ -318,6 +319,11 @@ export default function HomePage() {
                   <div style={{ ...mutedStyle, marginTop: 8 }}>
                     {hotspot.totalEntries} total entries · {hotspot.negativeEntries} negative · latest {formatTimestamp(hotspot.latestAt)}
                   </div>
+                  <div style={{ ...mutedStyle, marginTop: 6 }}>
+                    {hotspot.openEntries > 1
+                      ? 'Repeated open notes suggest a draft/content fix should land before the next outreach.'
+                      : 'Single open note: confirm the reviewer concern is addressed before the next demo.'}
+                  </div>
                 </li>
               );
             })}
@@ -370,6 +376,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>{entry.message}</div>
+                  <div style={{ ...mutedStyle, marginTop: 8 }}><strong>Action hint:</strong> {feedbackActionHint(entry)}</div>
                   <div style={{ ...mutedStyle, marginTop: 8 }}>
                     {entry.reviewer} · {entry.source} · score {entry.score ?? 'n/a'} · {formatTimestamp(entry.createdAt)}
                   </div>

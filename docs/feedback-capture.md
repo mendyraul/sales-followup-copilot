@@ -24,4 +24,5 @@ Manual-safe feedback capture for QA and product iteration.
 6. Review the follow-up queue for negative or score-3-and-below entries before demos so the sharpest issues get a human response first.
 7. Keep the linked lead context visible during triage so reviewers can see status/email without leaving the dashboard.
 8. Check the dashboard's feedback hotspots panel to spot leads with repeated unresolved notes before generating another draft.
+9. Use the dashboard action hints to decide whether each open note needs a copy revision, a reproducible bug check, or a simple operator confirmation before the next demo.
 
