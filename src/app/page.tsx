@@ -212,7 +212,10 @@ export default function HomePage() {
               return (
                 <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <strong>{lead?.name ?? 'Unlinked feedback'}</strong>
+                    <div>
+                      <strong>{lead?.name ?? 'Unlinked feedback'}</strong>
+                      {lead ? <div style={{ ...mutedStyle, marginTop: 4 }}>{lead.status.toUpperCase()} · {lead.email ?? 'no-email'}</div> : null}
+                    </div>
                     <span style={warningPillStyle}>needs follow-up</span>
                   </div>
                   <div style={{ ...mutedStyle, marginTop: 6 }}>
@@ -297,21 +300,29 @@ export default function HomePage() {
           </p>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {latestFeedback.map((entry) => (
-              <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <strong>{entry.category.replace('_', ' ')}</strong>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
-                    <span style={entry.resolved ? miniPillStyle : warningPillStyle}>{entry.resolved ? 'resolved' : 'open'}</span>
+            {latestFeedback.map((entry) => {
+              const lead = demoLeads.find((candidate) => candidate.id === entry.leadId);
+              return (
+                <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{entry.category.replace('_', ' ')}</strong>
+                      <div style={{ ...mutedStyle, marginTop: 4 }}>
+                        {lead ? `${lead.name} · ${lead.status.toUpperCase()}` : 'Unlinked feedback'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
+                      <span style={entry.resolved ? miniPillStyle : warningPillStyle}>{entry.resolved ? 'resolved' : 'open'}</span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ marginTop: 8 }}>{entry.message}</div>
-                <div style={{ ...mutedStyle, marginTop: 8 }}>
-                  {entry.reviewer} · {entry.source} · score {entry.score ?? 'n/a'} · {formatTimestamp(entry.createdAt)}
-                </div>
-              </li>
-            ))}
+                  <div style={{ marginTop: 8 }}>{entry.message}</div>
+                  <div style={{ ...mutedStyle, marginTop: 8 }}>
+                    {entry.reviewer} · {entry.source} · score {entry.score ?? 'n/a'} · {formatTimestamp(entry.createdAt)}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
 

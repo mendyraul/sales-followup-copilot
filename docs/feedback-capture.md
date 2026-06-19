@@ -22,3 +22,4 @@ Manual-safe feedback capture for QA and product iteration.
 4. Review trends weekly to improve prompts, UX, or guardrails.
 5. Use the seeded feedback inbox on `/` to confirm the review loop stays visible in manual mode before any live send path exists.
 6. Review the follow-up queue for negative or score-3-and-below entries before demos so the sharpest issues get a human response first.
+7. Keep the linked lead context visible during triage so reviewers can see status/email without leaving the dashboard.

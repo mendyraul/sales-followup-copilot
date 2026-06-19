@@ -107,6 +107,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Feedback entries');
     expect(html).toContain('Open items');
     expect(html).toContain('Resolved items');
+    expect(html).toContain('Pat Rivera');
+    expect(html).toContain('HOT');
+    expect(html).toContain('Avery Smith');
     expect(html).toContain('CSV import preview');
     expect(html).toContain('CSV preview rows');
     expect(html).toContain('Manual QA checks');
