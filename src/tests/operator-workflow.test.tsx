@@ -11,7 +11,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -25,6 +25,7 @@ describe('operator workflow regression', () => {
     const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
     const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
     const latestFeedback = recentFeedback(demoFeedbackEntries);
+    const hotspots = feedbackHotspots(demoFeedbackEntries);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
@@ -74,6 +75,13 @@ describe('operator workflow regression', () => {
       id: 'feedback-demo-003',
       sentiment: 'negative',
     });
+    expect(hotspots[0]).toEqual({
+      leadId: 'lead-demo-001',
+      totalEntries: 1,
+      openEntries: 1,
+      negativeEntries: 1,
+      latestAt: '2026-06-10T07:32:00.000Z',
+    });
 
     expect(timelineSummary).toMatchObject({
       totalEvents: 5,
@@ -103,6 +111,8 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Release summary');
     expect(html).toContain('Deploy checkpoints');
     expect(html).toContain('Feedback capture inbox');
+    expect(html).toContain('Feedback hotspots');
+    expect(html).toContain('Repeat issue watchlist');
     expect(html).toContain('Feedback summary');
     expect(html).toContain('Feedback entries');
     expect(html).toContain('Open items');

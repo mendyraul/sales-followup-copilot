@@ -101,6 +101,54 @@ export function recentFeedback(records: FeedbackRecord[], limit = 3) {
     .slice(0, limit);
 }
 
+export type FeedbackHotspot = {
+  leadId: string;
+  totalEntries: number;
+  openEntries: number;
+  negativeEntries: number;
+  latestAt: string;
+};
+
+export function feedbackHotspots(records: FeedbackRecord[], limit = 3): FeedbackHotspot[] {
+  const grouped = new Map<string, FeedbackHotspot>();
+
+  for (const record of records) {
+    if (!record.leadId) {
+      continue;
+    }
+
+    const existing = grouped.get(record.leadId) ?? {
+      leadId: record.leadId,
+      totalEntries: 0,
+      openEntries: 0,
+      negativeEntries: 0,
+      latestAt: record.createdAt,
+    };
+
+    existing.totalEntries += 1;
+    if (!record.resolved) {
+      existing.openEntries += 1;
+    }
+    if (record.sentiment === 'negative') {
+      existing.negativeEntries += 1;
+    }
+    if (new Date(record.createdAt).getTime() > new Date(existing.latestAt).getTime()) {
+      existing.latestAt = record.createdAt;
+    }
+
+    grouped.set(record.leadId, existing);
+  }
+
+  return [...grouped.values()]
+    .sort((a, b) => {
+      if (b.openEntries !== a.openEntries) return b.openEntries - a.openEntries;
+      if (b.negativeEntries !== a.negativeEntries) return b.negativeEntries - a.negativeEntries;
+      if (b.totalEntries !== a.totalEntries) return b.totalEntries - a.totalEntries;
+      return new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime();
+    })
+    .slice(0, limit);
+}
+
 export function feedbackNeedsAttention(records: FeedbackRecord[]) {
   return [...records]
     .filter((record) => !record.resolved && (record.sentiment === 'negative' || (record.score ?? 5) <= 3))

@@ -8,7 +8,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -20,6 +20,7 @@ const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const latestFeedback = recentFeedback(demoFeedbackEntries);
 const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
+const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
@@ -287,6 +288,58 @@ export default function HomePage() {
               <li>Preflight commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Database step: <code>npx prisma migrate deploy</code></li>
               <li>Rollback rule: keep the previous good branch or artifact ready before promoting the next stacked slice.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Feedback hotspots</h2>
+          <p style={mutedStyle}>
+            Repeated feedback on the same lead stays grouped so reviewers can see which conversations still need copy changes, bug fixes, or manual follow-up before the next demo.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {feedbackLeadHotspots.map((hotspot) => {
+              const lead = demoLeads.find((candidate) => candidate.id === hotspot.leadId);
+              return (
+                <li key={hotspot.leadId} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{lead?.name ?? hotspot.leadId}</strong>
+                      <div style={{ ...mutedStyle, marginTop: 4 }}>{lead ? `${lead.status.toUpperCase()} · ${lead.email ?? 'no-email'}` : 'Linked lead unavailable'}</div>
+                    </div>
+                    <span style={hotspot.openEntries > 0 ? warningPillStyle : miniPillStyle}>
+                      {hotspot.openEntries} open
+                    </span>
+                  </div>
+                  <div style={{ ...mutedStyle, marginTop: 8 }}>
+                    {hotspot.totalEntries} total entries · {hotspot.negativeEntries} negative · latest {formatTimestamp(hotspot.latestAt)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Repeat issue watchlist</h2>
+            <ul>
+              <li>Review leads with multiple open feedback notes before drafting again.</li>
+              <li>Use repeated negatives to separate product bugs from copy-quality issues.</li>
+              <li>Close the loop manually once the reviewer confirms the fix.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>Tracked hotspots: {feedbackLeadHotspots.length}</li>
+              <li>Most urgent lead: {demoLeads.find((lead) => lead.id === feedbackLeadHotspots[0]?.leadId)?.name ?? 'n/a'}</li>
+              <li>Source data: <code>src/domain/feedback.ts</code> grouped by linked lead</li>
             </ul>
           </div>
         </div>

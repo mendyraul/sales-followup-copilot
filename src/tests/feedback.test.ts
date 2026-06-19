@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -97,6 +97,33 @@ describe('feedback normalization', () => {
     expect(feedbackNeedsAttention(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
       'feedback-demo-003',
       'feedback-demo-001',
+    ]);
+  });
+
+
+  it('surfaces repeat feedback hotspots by linked lead', () => {
+    expect(feedbackHotspots(demoFeedbackEntries)).toEqual([
+      {
+        leadId: 'lead-demo-001',
+        totalEntries: 1,
+        openEntries: 1,
+        negativeEntries: 1,
+        latestAt: '2026-06-10T07:32:00.000Z',
+      },
+      {
+        leadId: 'lead-demo-003',
+        totalEntries: 1,
+        openEntries: 1,
+        negativeEntries: 0,
+        latestAt: '2026-06-10T07:08:00.000Z',
+      },
+      {
+        leadId: 'lead-demo-002',
+        totalEntries: 1,
+        openEntries: 0,
+        negativeEntries: 0,
+        latestAt: '2026-06-10T07:20:00.000Z',
+      },
     ]);
   });
 
