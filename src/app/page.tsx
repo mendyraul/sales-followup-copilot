@@ -238,7 +238,7 @@ export default function HomePage() {
           <div>
             <h2>Coverage</h2>
             <ul>
-              <li>Queued feedback items: {feedbackFollowUps.length}</li>
+              <li>Queued unresolved items: {feedbackFollowUps.length}</li>
               <li>Newest feedback signal: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
               <li>Primary source: seeded inbox + summary helpers in <code>src/domain/feedback.ts</code></li>
             </ul>
@@ -301,7 +301,10 @@ export default function HomePage() {
               <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <strong>{entry.category.replace('_', ' ')}</strong>
-                  <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
+                    <span style={entry.resolved ? miniPillStyle : warningPillStyle}>{entry.resolved ? 'resolved' : 'open'}</span>
+                  </div>
                 </div>
                 <div style={{ marginTop: 8 }}>{entry.message}</div>
                 <div style={{ ...mutedStyle, marginTop: 8 }}>
@@ -318,6 +321,8 @@ export default function HomePage() {
             <ul>
               <li>Total entries: {feedbackSummary.total}</li>
               <li>Average score: {feedbackSummary.averageScore ?? 'n/a'}</li>
+              <li>Open items: {feedbackSummary.openCount}</li>
+              <li>Resolved items: {feedbackSummary.resolvedCount}</li>
               <li>Latest capture: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
               <li>Categories: UX {feedbackSummary.categories.ux}, bugs {feedbackSummary.categories.bug}, draft quality {feedbackSummary.categories.result_quality}</li>
             </ul>

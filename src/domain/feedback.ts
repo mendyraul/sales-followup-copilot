@@ -9,6 +9,7 @@ export type FeedbackInput = {
   score?: number;
   source?: 'in_app' | 'email' | 'internal_note';
   metadata?: Record<string, unknown>;
+  resolved?: boolean;
 };
 
 export function normalizeFeedback(input: FeedbackInput) {
@@ -33,7 +34,7 @@ export function normalizeFeedback(input: FeedbackInput) {
     score: input.score,
     message: trimmed,
     metadata: input.metadata ? JSON.stringify(input.metadata) : undefined,
-    resolved: false,
+    resolved: input.resolved ?? false,
   };
 }
 
@@ -61,6 +62,7 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
   let scoredTotal = 0;
   let latestAt: string | undefined;
   let latestTimestamp = Number.NEGATIVE_INFINITY;
+  let resolvedCount = 0;
 
   for (const record of records) {
     categories[record.category] += 1;
@@ -69,6 +71,10 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
     if (record.score !== undefined) {
       scoredCount += 1;
       scoredTotal += record.score;
+    }
+
+    if (record.resolved) {
+      resolvedCount += 1;
     }
 
     const recordTimestamp = new Date(record.createdAt).getTime();
@@ -84,6 +90,8 @@ export function summarizeFeedback(records: FeedbackRecord[]) {
     sentiments,
     averageScore: scoredCount ? Number((scoredTotal / scoredCount).toFixed(1)) : null,
     latestAt: latestAt ?? null,
+    openCount: total - resolvedCount,
+    resolvedCount,
   };
 }
 
@@ -95,7 +103,7 @@ export function recentFeedback(records: FeedbackRecord[], limit = 3) {
 
 export function feedbackNeedsAttention(records: FeedbackRecord[]) {
   return [...records]
-    .filter((record) => record.sentiment === 'negative' || (record.score ?? 5) <= 3)
+    .filter((record) => !record.resolved && (record.sentiment === 'negative' || (record.score ?? 5) <= 3))
     .sort((a, b) => {
       const scoreDelta = (a.score ?? 5) - (b.score ?? 5);
       if (scoreDelta !== 0) {

@@ -61,6 +61,8 @@ describe('feedback normalization', () => {
       },
       averageScore: 3.3,
       latestAt: '2026-06-10T07:32:00.000Z',
+      openCount: 2,
+      resolvedCount: 1,
     });
   });
 
@@ -72,6 +74,17 @@ describe('feedback normalization', () => {
     ]);
   });
 
+  it('preserves explicit resolved state from captured feedback', () => {
+    const resolved = normalizeFeedback({
+      category: 'ux',
+      sentiment: 'positive',
+      message: 'Fixed after QA review',
+      resolved: true,
+    });
+
+    expect(resolved.resolved).toBe(true);
+  });
+
   it('reports latestAt from the newest record even when input order drifts', () => {
     const outOfOrder = [demoFeedbackEntries[0], demoFeedbackEntries[2], demoFeedbackEntries[1]];
 
@@ -80,10 +93,18 @@ describe('feedback normalization', () => {
     });
   });
 
-  it('prioritizes negative or low-score feedback for follow-up', () => {
+  it('prioritizes only unresolved negative or low-score feedback for follow-up', () => {
     expect(feedbackNeedsAttention(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
       'feedback-demo-003',
       'feedback-demo-001',
     ]);
+  });
+
+  it('skips resolved low-score feedback in the follow-up queue', () => {
+    const resolvedLowScore = demoFeedbackEntries.map((entry) =>
+      entry.id === 'feedback-demo-001' ? { ...entry, resolved: true } : entry
+    );
+
+    expect(feedbackNeedsAttention(resolvedLowScore).map((entry) => entry.id)).toEqual(['feedback-demo-003']);
   });
 });

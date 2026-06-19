@@ -28,6 +28,7 @@ const seededFeedback: Array<FeedbackInput & { id: string; createdAt: string; rev
     score: 5,
     source: 'internal_note',
     metadata: { area: 'queue-ui' },
+    resolved: true,
     reviewer: 'ops-demo',
     createdAt: '2026-06-10T07:20:00.000Z',
   },

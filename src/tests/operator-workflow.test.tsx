@@ -67,6 +67,8 @@ describe('operator workflow regression', () => {
       sentiments: { positive: 1, neutral: 1, negative: 1 },
       averageScore: 3.3,
       latestAt: '2026-06-10T07:32:00.000Z',
+      openCount: 2,
+      resolvedCount: 1,
     });
     expect(latestFeedback[0]).toMatchObject({
       id: 'feedback-demo-003',
@@ -103,6 +105,8 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Feedback capture inbox');
     expect(html).toContain('Feedback summary');
     expect(html).toContain('Feedback entries');
+    expect(html).toContain('Open items');
+    expect(html).toContain('Resolved items');
     expect(html).toContain('CSV import preview');
     expect(html).toContain('CSV preview rows');
     expect(html).toContain('Manual QA checks');
