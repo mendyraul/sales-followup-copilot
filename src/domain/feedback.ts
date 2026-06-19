@@ -109,28 +109,61 @@ export type FeedbackHotspot = {
   latestAt: string;
 };
 
-export function feedbackActionHint(record: FeedbackRecord) {
+export type FeedbackEscalation = 'resolved' | 'fresh' | 'watch' | 'urgent';
+
+export function feedbackEscalation(record: FeedbackRecord, now = new Date()): FeedbackEscalation {
+  if (record.resolved) {
+    return 'resolved';
+  }
+
+  const ageHours = Math.max(0, (now.getTime() - new Date(record.createdAt).getTime()) / (1000 * 60 * 60));
+  const score = record.score ?? 5;
+
+  if (record.sentiment === 'negative' || score <= 2) {
+    return ageHours >= 24 ? 'urgent' : 'watch';
+  }
+
+  if (score <= 3 || record.category === 'bug' || record.category === 'result_quality') {
+    return ageHours >= 72 ? 'urgent' : ageHours >= 24 ? 'watch' : 'fresh';
+  }
+
+  return ageHours >= 72 ? 'watch' : 'fresh';
+}
+
+export function feedbackActionHint(record: FeedbackRecord, now = new Date()) {
+  const escalation = feedbackEscalation(record, now);
+
   if (record.resolved) {
     return 'Resolved — no further follow-up needed unless new feedback arrives.';
   }
 
   if (record.category === 'bug') {
-    return 'Check the linked workflow for a reproducible product bug before the next demo.';
+    return escalation === 'urgent'
+      ? 'Overdue bug follow-up — reproduce the issue and confirm the fix with a human before the next demo.'
+      : 'Check the linked workflow for a reproducible product bug before the next demo.';
   }
 
   if ((record.score ?? 5) <= 2 || record.sentiment === 'negative') {
-    return 'Review the linked draft or queue state with a human before sending anything else.';
+    return escalation === 'urgent'
+      ? 'Overdue reviewer concern — pause new outreach and resolve the linked draft or queue issue with a human first.'
+      : 'Review the linked draft or queue state with a human before sending anything else.';
   }
 
   if (record.category === 'result_quality') {
-    return 'Tighten the draft copy and confirm the next version addresses the reviewer note.';
+    return escalation === 'urgent'
+      ? 'Overdue copy fix — tighten the draft and re-check it with a human before the next follow-up.'
+      : 'Tighten the draft copy and confirm the next version addresses the reviewer note.';
   }
 
   if (record.category === 'ux') {
-    return 'Verify the operator workflow stays obvious without adding automation risk.';
+    return escalation === 'urgent'
+      ? 'Overdue UX follow-up — confirm the workflow is still obvious before another operator run.'
+      : 'Verify the operator workflow stays obvious without adding automation risk.';
   }
 
-  return 'Log the note, confirm the context, and decide the next manual-safe follow-up.';
+  return escalation === 'urgent'
+    ? 'Overdue review note — confirm context and close the loop manually before the next demo.'
+    : 'Log the note, confirm the context, and decide the next manual-safe follow-up.';
 }
 
 export function feedbackHotspots(records: FeedbackRecord[], limit = 3): FeedbackHotspot[] {
@@ -177,6 +210,12 @@ export function feedbackNeedsAttention(records: FeedbackRecord[]) {
   return [...records]
     .filter((record) => !record.resolved && (record.sentiment === 'negative' || (record.score ?? 5) <= 3))
     .sort((a, b) => {
+      const escalationRank = { urgent: 0, watch: 1, fresh: 2, resolved: 3 } satisfies Record<FeedbackEscalation, number>;
+      const escalationDelta = escalationRank[feedbackEscalation(a)] - escalationRank[feedbackEscalation(b)];
+      if (escalationDelta !== 0) {
+        return escalationDelta;
+      }
+
       const scoreDelta = (a.score ?? 5) - (b.score ?? 5);
       if (scoreDelta !== 0) {
         return scoreDelta;

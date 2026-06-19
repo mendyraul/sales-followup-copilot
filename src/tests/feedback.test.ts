@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { feedbackActionHint, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -135,8 +135,15 @@ describe('feedback normalization', () => {
     expect(feedbackNeedsAttention(resolvedLowScore).map((entry) => entry.id)).toEqual(['feedback-demo-003']);
   });
 
+
+  it('marks unresolved aged feedback as urgent escalation', () => {
+    expect(feedbackEscalation(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toBe('urgent');
+    expect(feedbackEscalation(demoFeedbackEntries[0], new Date('2026-06-10T08:00:00.000Z'))).toBe('fresh');
+    expect(feedbackEscalation({ ...demoFeedbackEntries[1], resolved: true }, new Date('2026-06-12T08:00:00.000Z'))).toBe('resolved');
+  });
+
   it('generates manual-safe action hints for open and resolved feedback', () => {
-    expect(feedbackActionHint(demoFeedbackEntries[2])).toContain('reproducible product bug');
+    expect(feedbackActionHint(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toContain('Overdue bug follow-up');
     expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
   });
 });

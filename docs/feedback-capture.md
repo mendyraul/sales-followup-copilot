@@ -25,4 +25,5 @@ Manual-safe feedback capture for QA and product iteration.
 7. Keep the linked lead context visible during triage so reviewers can see status/email without leaving the dashboard.
 8. Check the dashboard's feedback hotspots panel to spot leads with repeated unresolved notes before generating another draft.
 9. Use the dashboard action hints to decide whether each open note needs a copy revision, a reproducible bug check, or a simple operator confirmation before the next demo.
+10. Treat aged unresolved notes as escalation candidates so reviewers can separate fresh feedback from overdue demo blockers.
 

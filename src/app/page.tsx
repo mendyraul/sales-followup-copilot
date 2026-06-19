@@ -8,7 +8,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackActionHint, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -217,13 +217,14 @@ export default function HomePage() {
                       <strong>{lead?.name ?? 'Unlinked feedback'}</strong>
                       {lead ? <div style={{ ...mutedStyle, marginTop: 4 }}>{lead.status.toUpperCase()} · {lead.email ?? 'no-email'}</div> : null}
                     </div>
-                    <span style={warningPillStyle}>needs follow-up</span>
+                    <span style={feedbackEscalation(entry) === 'urgent' ? warningPillStyle : miniPillStyle}>{feedbackEscalation(entry)}</span>
                   </div>
                   <div style={{ ...mutedStyle, marginTop: 6 }}>
                     {entry.category.replace('_', ' ')} · {entry.source} · score {entry.score ?? 'n/a'}
                   </div>
                   <div style={{ marginTop: 8 }}>{entry.message}</div>
                   <div style={{ ...mutedStyle, marginTop: 8 }}><strong>Next step:</strong> {feedbackActionHint(entry)}</div>
+                  <div style={{ ...mutedStyle, marginTop: 6 }}><strong>Triage state:</strong> {feedbackEscalation(entry) === 'urgent' ? 'Overdue review item' : 'Active review item'}</div>
                 </li>
               );
             })}
@@ -373,6 +374,7 @@ export default function HomePage() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
                       <span style={entry.resolved ? miniPillStyle : warningPillStyle}>{entry.resolved ? 'resolved' : 'open'}</span>
+                      <span style={feedbackEscalation(entry) === 'urgent' ? warningPillStyle : miniPillStyle}>{feedbackEscalation(entry)}</span>
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>{entry.message}</div>
