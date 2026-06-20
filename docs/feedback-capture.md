@@ -26,4 +26,5 @@ Manual-safe feedback capture for QA and product iteration.
 8. Check the dashboard's feedback hotspots panel to spot leads with repeated unresolved notes before generating another draft.
 9. Use the dashboard action hints to decide whether each open note needs a copy revision, a reproducible bug check, or a simple operator confirmation before the next demo.
 10. Treat aged unresolved notes as escalation candidates so reviewers can separate fresh feedback from overdue demo blockers.
+11. Use the escalation snapshot to spot how many notes are urgent, which ones can stay in watch mode, and how old the oldest open review item is.
 

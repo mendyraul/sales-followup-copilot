@@ -61,6 +61,7 @@ Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoi
 - No secrets in source control
 - Audit logs are expected for generated/sent actions
 - Home dashboard now shows a lightweight audit trail for lead, draft, feedback, and safety-mode events
+- Feedback triage now includes an escalation snapshot so reviewers can spot urgent notes and the oldest unresolved item before the next demo
 
 ## Prerequisites
 - Node.js 20+

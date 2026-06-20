@@ -8,7 +8,7 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -18,6 +18,7 @@ const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
+const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
 const latestFeedback = recentFeedback(demoFeedbackEntries);
 const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
@@ -238,6 +239,16 @@ export default function HomePage() {
               <li>Review negative or score-3-and-below entries before the next demo.</li>
               <li>Check whether the linked lead still needs a draft, copy tweak, or product bug fix.</li>
               <li>Keep the queue manual-safe: feedback informs humans, it does not auto-send.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Escalation snapshot</h2>
+            <ul>
+              <li>Urgent items: {feedbackEscalationSummary.urgent}</li>
+              <li>Watch items: {feedbackEscalationSummary.watch}</li>
+              <li>Fresh items: {feedbackEscalationSummary.fresh}</li>
+              <li>Oldest open note: {formatTimestamp(feedbackEscalationSummary.oldestOpenAt ?? '')}</li>
             </ul>
           </div>
 

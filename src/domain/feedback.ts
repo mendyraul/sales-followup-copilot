@@ -111,6 +111,15 @@ export type FeedbackHotspot = {
 
 export type FeedbackEscalation = 'resolved' | 'fresh' | 'watch' | 'urgent';
 
+export type FeedbackEscalationSummary = {
+  urgent: number;
+  watch: number;
+  fresh: number;
+  resolved: number;
+  open: number;
+  oldestOpenAt: string | null;
+};
+
 export function feedbackEscalation(record: FeedbackRecord, now = new Date()): FeedbackEscalation {
   if (record.resolved) {
     return 'resolved';
@@ -128,6 +137,35 @@ export function feedbackEscalation(record: FeedbackRecord, now = new Date()): Fe
   }
 
   return ageHours >= 72 ? 'watch' : 'fresh';
+}
+
+export function summarizeFeedbackEscalations(records: FeedbackRecord[], now = new Date()): FeedbackEscalationSummary {
+  const summary: FeedbackEscalationSummary = {
+    urgent: 0,
+    watch: 0,
+    fresh: 0,
+    resolved: 0,
+    open: 0,
+    oldestOpenAt: null,
+  };
+
+  let oldestOpenTimestamp = Number.POSITIVE_INFINITY;
+
+  for (const record of records) {
+    const escalation = feedbackEscalation(record, now);
+    summary[escalation] += 1;
+
+    if (!record.resolved) {
+      summary.open += 1;
+      const recordTimestamp = new Date(record.createdAt).getTime();
+      if (Number.isFinite(recordTimestamp) && recordTimestamp < oldestOpenTimestamp) {
+        oldestOpenTimestamp = recordTimestamp;
+        summary.oldestOpenAt = record.createdAt;
+      }
+    }
+  }
+
+  return summary;
 }
 
 export function feedbackActionHint(record: FeedbackRecord, now = new Date()) {

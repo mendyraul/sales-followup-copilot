@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -145,5 +145,16 @@ describe('feedback normalization', () => {
   it('generates manual-safe action hints for open and resolved feedback', () => {
     expect(feedbackActionHint(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toContain('Overdue bug follow-up');
     expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
+  });
+
+  it('summarizes escalation buckets and oldest open feedback', () => {
+    expect(summarizeFeedbackEscalations(demoFeedbackEntries, new Date('2026-06-12T08:00:00.000Z'))).toEqual({
+      urgent: 1,
+      watch: 1,
+      fresh: 0,
+      resolved: 1,
+      open: 2,
+      oldestOpenAt: '2026-06-10T07:08:00.000Z',
+    });
   });
 });
