@@ -10,6 +10,8 @@ describe('README launch playbook', () => {
     expect(readme).toContain('### Launch readiness checklist')
     expect(readme).toContain('### Recommended launch walk-through')
     expect(readme).toContain('### Manual QA focus')
+    expect(readme).toContain('### Common launch blockers and fast fixes')
+    expect(readme).toContain('### Operator sign-off notes')
     expect(readme).toContain('`SEND_MODE=manual` by default')
     expect(readme).toContain('No live provider is enabled by default')
   })

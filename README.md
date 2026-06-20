@@ -138,6 +138,19 @@ This branch is intended to be demoable and testable without enabling live outbou
 - audit coverage for operator-visible actions
 - local-only behavior when credentials are absent
 
+### Common launch blockers and fast fixes
+- `PrismaClientInitializationError` or connection failures: make sure `docker compose up -d db` is running and `DATABASE_URL` in `.env` still matches `.env.example`.
+- Empty dashboard after boot: run `npm run db:seed` or import a starter CSV before validating queue/timeline behavior.
+- Draft generation seems unavailable: keep `SEND_MODE=manual`, then set `AI_PROVIDER=mock` for local smoke tests so draft review stays manual-safe.
+- `npm run build` fails after schema changes: rerun `npx prisma migrate dev --name init` (or your latest migration) so generated Prisma artifacts match the schema.
+- CSV import rejects rows: compare the file headers with the `CSV lead import` section above before retrying.
+
+### Operator sign-off notes
+Capture these checkpoints before asking for review or merge:
+- which demo path you validated (seeded data, imported CSV, or both)
+- whether draft review stayed in manual/mock mode for the whole session
+- any queue, timeline, or feedback gaps still worth filing before beta promotion
+
 ## Testing
 ```bash
 npm test -- --run
