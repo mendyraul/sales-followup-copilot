@@ -1,5 +1,8 @@
 import { demoLeads } from '../data/demoLeads';
+
+import { listHotLeads } from '../domain/hot-lead';
 import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
+
 
 const queue = buildQueue(demoLeads, new Date('2026-06-09T14:00:00.000Z'));
 const queueGroups = groupQueueByPriority(queue);
@@ -100,7 +103,30 @@ export default function HomePage() {
           <div style={{ color: prioritySurface.low.text }}>Low priority</div>
         </div>
       </section>
-
+      
+      <section style={{ border: '1px solid #ddd', borderRadius: 12, padding: 16, background: '#fff' }}>
+        <h2 style={{ marginTop: 0 }}>Follow-up queue</h2>
+        <div style={{ display: 'grid', gap: 10 }}>
+          {queue.map((lead, index) => {
+            const hot = hotLeads.some((item) => item.id === lead.id);
+            return (
+              <article key={lead.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{index + 1}. {lead.name}</strong>
+                    {hot ? <span style={{ marginLeft: 8, padding: '2px 8px', borderRadius: 999, background: '#f97316', color: 'white', fontSize: 12, fontWeight: 700 }}>HOT</span> : null}
+                    <div style={{ color: '#555', marginTop: 4 }}>Status: {lead.status} · Updated: {timeLabel(lead.updatedAt)}</div>
+                    <div style={{ color: '#111827', marginTop: 6, fontWeight: 600 }}>{lead.nextAction.label}</div>
+                    <div style={{ color: '#6b7280', marginTop: 4 }}>{lead.nextAction.reason}</div>
+                    <div style={{ color: '#4b5563', marginTop: 4, fontSize: 13 }}>Follow-up stage: {lead.nextAction.followUpStage}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700 }}>Queue score {Math.round(lead.nextAction.score)}</div>
+                    <div style={{ color: lead.nextAction.band === 'urgent' ? '#b91c1c' : lead.nextAction.band === 'today' ? '#1d4ed8' : '#047857', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>
+                      {lead.nextAction.band}
+                    </div>
+                  </div>
+      </section>
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
         {(['high', 'medium', 'low'] as const).map((priority) => {
           const lane = queueGroups[priority];
