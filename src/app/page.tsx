@@ -71,6 +71,8 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
 }
 
 export default function HomePage() {
+  const stages = listFollowUpStages();
+
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 1120, margin: '0 auto' }}>
       <header style={{ marginBottom: 24 }}>
