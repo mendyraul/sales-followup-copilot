@@ -1,10 +1,13 @@
+import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
-
+import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
+import { needsAttention } from '../domain/queue';
 import { listHotLeads } from '../domain/hot-lead';
 import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
 
-
-const queue = buildQueue(demoLeads, new Date('2026-06-09T14:00:00.000Z'));
+const coverage = summarizeAuditCoverage(demoAuditLog);
+const latestEvents = recentAuditEntries(demoAuditLog, 4);
+const queue = needsAttention(demoLeads);
 const queueGroups = groupQueueByPriority(queue);
 
 const priorityColors = {
@@ -77,80 +80,105 @@ export default function HomePage() {
   const stages = listFollowUpStages();
 
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 1120, margin: '0 auto' }}>
-      <header style={{ marginBottom: 24 }}>
+    <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
+      <section>
         <h1>Sales Follow-Up Copilot</h1>
-        <p style={{ color: '#4b5563', lineHeight: 1.5 }}>
-          Manual-safe queue for deciding who should get the next follow-up first. Priority is based on lead status plus how long the lead has been waiting.
-        </p>
-      </header>
-
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
-        <div style={{ padding: 16, border: '1px solid #e5e7eb', borderRadius: 12 }}>
-          <strong>{queue.length}</strong>
-          <div style={{ color: '#6b7280' }}>Active leads in queue</div>
-        </div>
-        <div style={{ padding: 16, border: `1px solid ${prioritySurface.high.border}`, borderRadius: 12, background: prioritySurface.high.background }}>
-          <strong>{queueGroups.high.length}</strong>
-          <div style={{ color: prioritySurface.high.text }}>High priority now</div>
-        </div>
-        <div style={{ padding: 16, border: `1px solid ${prioritySurface.medium.border}`, borderRadius: 12, background: prioritySurface.medium.background }}>
-          <strong>{queueGroups.medium.length}</strong>
-          <div style={{ color: prioritySurface.medium.text }}>Medium priority</div>
-        </div>
-        <div style={{ padding: 16, border: `1px solid ${prioritySurface.low.border}`, borderRadius: 12, background: prioritySurface.low.background }}>
-          <strong>{queueGroups.low.length}</strong>
-          <div style={{ color: prioritySurface.low.text }}>Low priority</div>
-        </div>
+        <p>Manual-safe MVP for managing leads, follow-up drafts, and a visible audit trail.</p>
       </section>
-      
-      <section style={{ border: '1px solid #ddd', borderRadius: 12, padding: 16, background: '#fff' }}>
-        <h2 style={{ marginTop: 0 }}>Follow-up queue</h2>
-        <div style={{ display: 'grid', gap: 10 }}>
-          {queue.map((lead, index) => {
-            const hot = hotLeads.some((item) => item.id === lead.id);
-            return (
-              <article key={lead.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+
+      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <MetricCard label="Tracked leads" value={String(demoLeads.length)} helper="Demo data seeded for local QA" />
+        <MetricCard label="Audit events" value={String(coverage.totalEvents)} helper="Lead, draft, feedback, and system actions" />
+        <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
+        <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Recent audit log</h2>
+          <p style={mutedStyle}>
+            A lightweight operator-facing timeline for lead changes, draft actions, feedback capture, and runtime guard checks.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {latestEvents.map((entry) => (
+              <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <div>
-                    <strong>{index + 1}. {lead.name}</strong>
-                    {hot ? <span style={{ marginLeft: 8, padding: '2px 8px', borderRadius: 999, background: '#f97316', color: 'white', fontSize: 12, fontWeight: 700 }}>HOT</span> : null}
-                    <div style={{ color: '#555', marginTop: 4 }}>Status: {lead.status} · Updated: {timeLabel(lead.updatedAt)}</div>
-                    <div style={{ color: '#111827', marginTop: 6, fontWeight: 600 }}>{lead.nextAction.label}</div>
-                    <div style={{ color: '#6b7280', marginTop: 4 }}>{lead.nextAction.reason}</div>
-                    <div style={{ color: '#4b5563', marginTop: 4, fontSize: 13 }}>Follow-up stage: {lead.nextAction.followUpStage}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700 }}>Queue score {Math.round(lead.nextAction.score)}</div>
-                    <div style={{ color: lead.nextAction.band === 'urgent' ? '#b91c1c' : lead.nextAction.band === 'today' ? '#1d4ed8' : '#047857', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>
-                      {lead.nextAction.band}
-                    </div>
-                  </div>
-      </section>
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-        {(['high', 'medium', 'low'] as const).map((priority) => {
-          const lane = queueGroups[priority];
-          const surface = prioritySurface[priority];
-          const copy = laneCopy[priority];
-
-          return (
-            <section key={priority} style={{ border: `1px solid ${surface.border}`, borderRadius: 16, overflow: 'hidden', background: surface.background }}>
-              <div style={{ padding: 16, borderBottom: `1px solid ${surface.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-                  <h2 style={{ margin: 0 }}>{copy.title}</h2>
-                  <span style={{ padding: '4px 10px', borderRadius: 999, background: priorityColors[priority], color: 'white', fontSize: 12, textTransform: 'uppercase' }}>
-                    {lane.length}
-                  </span>
+                  <strong>{entry.summary}</strong>
+                  <span style={pillStyle}>{entry.action}</span>
                 </div>
-                <p style={{ margin: 0, color: '#4b5563', lineHeight: 1.5 }}>{copy.subtitle}</p>
-              </div>
-              <div style={{ padding: 16, display: 'grid', gap: 12 }}>
-                {lane.length > 0 ? lane.map((item) => <QueueCard key={item.lead.id} priority={priority} item={item} />) : <div style={{ color: '#6b7280' }}>{copy.empty}</div>}
-              </div>
-            </section>
-          );
-        })}
+                <div style={{ ...mutedStyle, marginTop: 6 }}>
+                  {entry.actor} · {entry.entityType} · {formatTimestamp(entry.createdAt)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Audit coverage</h2>
+            <ul>
+              <li>Lead events: {coverage.leadEvents}</li>
+              <li>Draft events: {coverage.followUpEvents}</li>
+              <li>Feedback events: {coverage.feedbackEvents}</li>
+              <li>Latest seed event: {formatTimestamp(coverage.latestEventAt ?? '')}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Why it matters</h2>
+            <ul>
+              <li>Lets operators explain what changed for each lead.</li>
+              <li>Supports manual QA before any outbound workflow goes live.</li>
+              <li>Preserves safety-mode checks in the same visible trail.</li>
+            </ul>
+          </div>
+        </div>
       </section>
     </main>
   );
 }
+
+function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div style={panelStyle}>
+      <div style={mutedStyle}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, margin: '8px 0' }}>{value}</div>
+      <div style={mutedStyle}>{helper}</div>
+    </div>
+  );
+}
+
+function formatTimestamp(value: string) {
+  if (!value) {
+    return 'N/A';
+  }
+
+  return new Date(value).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  });
+}
+
+const panelStyle: React.CSSProperties = {
+  border: '1px solid #d0d7de',
+  borderRadius: 16,
+  padding: 16,
+  background: '#fff',
+  boxShadow: '0 1px 2px rgba(16, 24, 40, 0.05)',
+};
+
+const mutedStyle: React.CSSProperties = {
+  color: '#57606a',
+  fontSize: 14,
+};
+
+const pillStyle: React.CSSProperties = {
+  borderRadius: 999,
+  background: '#ddf4ff',
+  color: '#0550ae',
+  padding: '4px 10px',
+  fontSize: 12,
+  fontWeight: 600,
+};

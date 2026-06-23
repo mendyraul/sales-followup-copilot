@@ -56,6 +56,7 @@ Expected headers:
 - Drafts are intended for approve/edit/reject workflow
 - No secrets in source control
 - Audit logs are expected for generated/sent actions
+- Home dashboard now shows a lightweight audit trail for lead, draft, feedback, and safety-mode events
 
 ## Prerequisites
 - Node.js 20+
@@ -167,6 +168,11 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `Lead.notes` stays available for quick summary text.
 - `LeadNote` supports structured per-lead notes with timestamps.
 - `LeadEvent` uses normalized `LeadEventType` values for an auditable activity timeline.
+
+## Audit log
+- `AuditLog` is the canonical persistence model for operator-visible action history.
+- The MVP dashboard now includes a lightweight audit timeline seeded with lead, draft, feedback, and safety-mode events.
+- This keeps manual QA and future compliance work grounded in visible, reviewable history before any live sending mode is introduced.
 
 ## Feedback capture
 - Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
