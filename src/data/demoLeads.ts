@@ -1,5 +1,13 @@
 import type { Lead } from '../domain/lead';
 
+const now = Date.parse('2026-06-09T12:00:00.000Z');
+const hour = 1000 * 60 * 60;
+const day = hour * 24;
+
+function iso(offsetMs: number): string {
+  return new Date(now - offsetMs).toISOString();
+}
+
 export const demoLeads: Lead[] = [
   {
     id: 'lead-demo-001',
@@ -7,39 +15,31 @@ export const demoLeads: Lead[] = [
     email: 'avery@example.com',
     phone: '+1-555-0101',
     status: 'new',
-    createdAt: '2026-06-08T12:00:00.000Z',
-    updatedAt: '2026-06-08T18:00:00.000Z'
+    createdAt: iso(day * 10),
+    updatedAt: iso(day * 9)
   },
   {
     id: 'lead-demo-002',
     name: 'Jordan Lee',
     email: 'jordan@example.com',
     status: 'contacted',
-    createdAt: '2026-06-06T15:00:00.000Z',
-    updatedAt: '2026-06-07T10:00:00.000Z'
+    createdAt: iso(day * 6),
+    updatedAt: iso(day * 2)
   },
   {
     id: 'lead-demo-003',
     name: 'Morgan Patel',
     email: 'morgan@example.com',
     status: 'hot',
-    createdAt: '2026-06-07T09:00:00.000Z',
-    updatedAt: '2026-06-08T09:30:00.000Z'
+    createdAt: iso(day * 4),
+    updatedAt: iso(hour * 12)
   },
   {
     id: 'lead-demo-004',
-    name: 'Casey Nguyen',
-    email: 'casey@example.com',
-    status: 'replied',
-    createdAt: '2026-06-07T08:00:00.000Z',
-    updatedAt: '2026-06-09T06:00:00.000Z'
-  },
-  {
-    id: 'lead-demo-005',
     name: 'Taylor Brooks',
     email: 'taylor@example.com',
-    status: 'won',
-    createdAt: '2026-06-01T08:00:00.000Z',
-    updatedAt: '2026-06-08T16:00:00.000Z'
+    status: 'replied',
+    createdAt: iso(day * 12),
+    updatedAt: iso(day * 8)
   }
 ];

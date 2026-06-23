@@ -94,7 +94,8 @@ Core focus areas:
 - status transitions
 - follow-up sequence logic
 - queue prioritization
-- stale/hot lead detection
+- stale lead detection
+- hot lead prioritization
 - opt-out safety checks
 
 ## Continuous Integration
@@ -149,7 +150,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 ## Demo script
 1. Start app and seed demo data
 2. Show dashboard and pipeline stage movement
-3. Pick a stale lead and generate a follow-up draft
+3. Pick a stale lead flagged on the dashboard and generate a follow-up draft
 4. Edit + approve draft in manual mode
 5. Show timeline/audit trail and queue reprioritization
 6. Import a short CSV and verify new leads appear
