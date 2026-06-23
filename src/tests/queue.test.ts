@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { getNextAction, needsAttention } from '../domain/queue';
+import { describe, it, expect } from 'vitest';
+import { buildQueue, groupQueueByPriority, needsAttention, queuePriority } from '../domain/queue';
 
 describe('next action queue', () => {
+  const now = new Date('2026-06-09T14:00:00.000Z');
+
   it('prioritizes hot leads', () => {
     const now = new Date('2026-06-10T03:00:00.000Z');
     const leads = [
@@ -80,5 +82,45 @@ describe('next action queue', () => {
     expect(queue[0].id).toBe('future-new');
     expect(queue[0].nextAction.ageHours).toBe(0);
     expect(queue[0].nextAction.band).toBe('soon');
+  });
+
+  it('builds queue metadata for the UI', () => {
+    const queue = buildQueue(
+      [
+        { id: '1', name: 'A', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-08T08:00:00.000Z', email: 'a@example.com' },
+        { id: '2', name: 'B', status: 'won', createdAt: now.toISOString(), updatedAt: '2026-06-08T08:00:00.000Z', email: 'b@example.com' }
+      ] as any,
+      now
+    );
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({
+      priority: 'medium',
+      reason: 'Lead replied and has been waiting more than a day.',
+      lead: { id: '1' },
+    });
+  });
+
+  it('maps scores to stable priority bands', () => {
+    expect(queuePriority(120)).toBe('high');
+    expect(queuePriority(70)).toBe('medium');
+    expect(queuePriority(30)).toBe('low');
+  });
+
+  it('groups queue items into operator-facing priority lanes', () => {
+    const queue = buildQueue(
+      [
+        { id: 'hot', name: 'Hot lead', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-08T08:00:00.000Z' },
+        { id: 'replied', name: 'Replied lead', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-08T18:00:00.000Z' },
+        { id: 'new', name: 'New lead', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-09T12:00:00.000Z' },
+      ] as any,
+      now
+    );
+
+    const groups = groupQueueByPriority(queue);
+
+    expect(groups.high.map((item) => item.lead.id)).toEqual(['hot']);
+    expect(groups.medium.map((item) => item.lead.id)).toEqual(['replied']);
+    expect(groups.low.map((item) => item.lead.id)).toEqual(['new']);
   });
 });
