@@ -2,12 +2,83 @@ import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { needsAttention } from '../domain/queue';
+import { listHotLeads } from '../domain/hot-lead';
+import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
+const queueGroups = groupQueueByPriority(queue);
+
+const priorityColors = {
+  high: '#b91c1c',
+  medium: '#b45309',
+  low: '#1d4ed8',
+} as const;
+
+const prioritySurface = {
+  high: { border: '#fecaca', background: '#fef2f2', text: '#991b1b' },
+  medium: { border: '#fde68a', background: '#fffbeb', text: '#92400e' },
+  low: { border: '#bfdbfe', background: '#eff6ff', text: '#1d4ed8' },
+} as const;
+
+const laneCopy: Record<QueuePriority, { title: string; subtitle: string; empty: string }> = {
+  high: {
+    title: 'Act now',
+    subtitle: 'Hot or replied leads that need the fastest human follow-up.',
+    empty: 'No urgent leads right now.',
+  },
+  medium: {
+    title: 'Queue next',
+    subtitle: 'Leads that have momentum but can wait behind the urgent lane.',
+    empty: 'No medium-priority leads waiting.',
+  },
+  low: {
+    title: 'Warm up',
+    subtitle: 'Newer opportunities that still need a first touch or light triage.',
+    empty: 'No low-priority leads to warm up.',
+  },
+};
+
+function formatAge(ageHours: number) {
+  if (ageHours >= 24) {
+    const days = Math.floor(ageHours / 24);
+    const hours = Math.round(ageHours % 24);
+    return hours > 0 ? `${days}d ${hours}h ago` : `${days}d ago`;
+  }
+
+  return `${Math.round(ageHours)}h ago`;
+}
+
+function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof queue)[number] }) {
+  return (
+    <article style={{ background: 'white', padding: 16, borderRadius: 12, border: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div>
+          <h3 style={{ margin: '0 0 4px 0' }}>{item.lead.name}</h3>
+          <div style={{ color: '#6b7280' }}>{item.lead.email ?? 'No email on file'}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: priorityColors[priority], color: 'white', fontSize: 12, textTransform: 'uppercase' }}>
+            {priority}
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#e5e7eb', fontSize: 12, textTransform: 'capitalize' }}>
+            {item.lead.status}
+          </span>
+        </div>
+      </div>
+      <p style={{ margin: '0 0 10px 0', color: '#374151' }}>{item.reason}</p>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 14 }}>
+        <span>Priority score: {Math.round(item.score)}</span>
+        <span>Last activity: {formatAge(item.ageHours)}</span>
+      </div>
+    </article>
+  );
+}
 
 export default function HomePage() {
+  const stages = listFollowUpStages();
+
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
       <section>
