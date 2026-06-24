@@ -180,6 +180,11 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
+## AI provider abstraction
+- `lib/aiProvider.ts` is the single adapter entry point for draft generation.
+- `mock` is the safe default and returns deterministic local drafts for demos, tests, and manual QA.
+- `openai` is supported behind `AI_API_KEY` and keeps provider-specific HTTP wiring out of the rest of the app.
+- Future providers should implement the same `AiProvider` contract so routing logic stays isolated.
 ## Draft review workflow
 - Draft review should stay human-controlled even when generation gets faster.
 - `lib/draftWorkflow.ts` provides `createDraft`, `approveDraft`, `editDraft`, and `rejectDraft` helpers for a strict pending -> approved/rejected revision flow.
