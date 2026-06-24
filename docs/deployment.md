@@ -30,6 +30,9 @@ AI_PROVIDER=mock
 FEEDBACK_CAPTURE_ENABLED=true
 FEEDBACK_DEFAULT_CHANNEL=in_app
 ```
+- `OPENAI_API_KEY` (or provider key used by your AI adapter)
+- `SEND_MODE=manual` (recommended default)
+- `SEND_MODE=test` only for deliberate non-live deployment validation
 
 > Never switch to `SEND_MODE=live` as part of a normal deploy. That should be a separate, explicitly approved change.
 
@@ -77,8 +80,19 @@ npm test -- --run
 npm run build
 npm run start
 ```
+## 6) Platform notes (Vercel/Render/Fly/etc.)
+- Add all required env vars in platform settings
+- Run `prisma migrate deploy` as part of release command
+- Keep `SEND_MODE=manual` or `SEND_MODE=test` until explicit human approval to go live
+- Ensure logs are retained for auditability
 
-## 7) Post-deploy smoke checklist
+## 7.1) Post-deploy checklist
+- App health check passes
+- DB connectivity works
+- Lead CRUD works
+- Follow-up generation works in manual mode
+
+## 7.2) Post-deploy smoke checklist
 After the app is live, verify:
 - `/` loads without runtime errors
 - the Safety mode card still shows `manual`
