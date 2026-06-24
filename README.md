@@ -198,6 +198,11 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - Each revised draft now keeps both `supersedesId` and `supersededById`, so draft history can be reconstructed from any revision for operator review.
 - `draftHistory()` and `currentDraftRevision()` expose that lineage for future UI/history rendering without guessing which revision is current.
 
+## First follow-up draft generation
+- `lib/firstFollowupDraft.ts` builds the first-touch follow-up payload from lead context, desired next step, and tone.
+- The helper routes through `lib/aiProvider.ts`, so `AI_PROVIDER=mock` stays the deterministic/manual-safe default for demos and QA.
+- Every generated draft returns a human review checklist before outbound delivery.
+
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
