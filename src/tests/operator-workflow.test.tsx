@@ -4,14 +4,19 @@ import { describe, expect, it } from 'vitest';
 import HomePage from '../app/page';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
+import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { needsAttention, nextActionScore } from '../domain/queue';
+import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
   it('keeps the seeded queue and audit trail aligned for manual QA', () => {
     const queue = needsAttention(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
+    const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
+    const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
+    const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
 
     expect(queue).toHaveLength(3);
     expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-002', 'lead-demo-001']);
@@ -31,6 +36,13 @@ describe('operator workflow regression', () => {
       action: 'system_mode_checked',
       entityType: 'system',
     });
+
+    expect(timelineSummary).toMatchObject({
+      totalEvents: 5,
+      totalNotes: 3,
+    });
+    expect(leadThreeTimeline.map((entry) => entry.id)).toEqual(['timeline-005', 'timeline-004', 'timeline-003']);
+    expect(leadThreeNotes[0]?.body).toContain('softer tone');
   });
 
   it('renders the dashboard with the key QA checkpoints visible', () => {
@@ -42,6 +54,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Safety mode');
     expect(html).toContain('Recent audit log');
     expect(html).toContain('Audit coverage');
+    expect(html).toContain('Lead timeline');
+    expect(html).toContain('Timeline summary');
+    expect(html).toContain('Structured notes');
     expect(html).toContain('manual');
     expect(html).toContain('Lead events: 2');
     expect(html).toContain('Feedback events: 1');
