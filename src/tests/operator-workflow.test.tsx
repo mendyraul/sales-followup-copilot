@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import HomePage from '../app/page';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoLeads } from '../data/demoLeads';
+import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
+import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
@@ -15,6 +17,7 @@ describe('operator workflow regression', () => {
     const queue = needsAttention(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
+    const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
@@ -39,6 +42,13 @@ describe('operator workflow regression', () => {
       entityType: 'system',
     });
 
+    expect(manualQaSummary).toEqual({
+      totalItems: 5,
+      readyItems: 4,
+      watchItems: 1,
+      areas: ['startup', 'queue', 'timeline', 'import', 'outbound'],
+    });
+
     expect(timelineSummary).toMatchObject({
       totalEvents: 5,
       totalNotes: 3,
@@ -56,6 +66,8 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Sales Follow-Up Copilot');
     expect(html).toContain('Tracked leads');
     expect(html).toContain('Queue items');
+    expect(html).toContain('Manual QA checklist');
+    expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');
     expect(html).toContain('Recent audit log');
     expect(html).toContain('Audit coverage');
@@ -63,6 +75,7 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Timeline summary');
     expect(html).toContain('CSV import preview');
     expect(html).toContain('CSV preview rows');
+    expect(html).toContain('Manual QA checks');
     expect(html).toContain('Blocked rows');
     expect(html).toContain('Structured notes');
     expect(html).toContain('manual');

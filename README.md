@@ -43,9 +43,11 @@ The dashboard now includes a seeded CSV import preview so operators can verify:
 - status normalization before database writes
 
 ## Manual QA checklist
+Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoints:
 - [ ] App starts locally (`npm run dev`) without runtime errors.
 - [ ] Lead list/dashboard loads with demo data.
-- [ ] Creating and editing a lead works end-to-end.
+- [ ] Queue ordering, timeline history, and audit log match the seeded operator flow.
+- [ ] CSV preview shows valid rows, blocked rows, and duplicate warnings before import.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
 - [ ] Outbound actions remain blocked unless `SEND_MODE=manual` is intentionally changed.
 - [ ] No secrets are printed in logs or committed to git.
@@ -148,6 +150,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
+- Manual QA runbook: [`docs/manual-qa.md`](docs/manual-qa.md)
 - Minimum local values: `DATABASE_URL` and `SEND_MODE=manual`
 - AI provider keys are optional and only needed for draft-generation testing
 - Feedback defaults: `FEEDBACK_CAPTURE_ENABLED=true` and `FEEDBACK_DEFAULT_CHANNEL=in_app`
