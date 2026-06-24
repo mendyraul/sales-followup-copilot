@@ -37,13 +37,22 @@ npm run import:csv -- ./data/leads.csv
 Expected headers:
 - `name` (required)
 - `email` (required)
+- `phone` (optional)
 - `source` (optional)
-- `status` (optional, defaults to `NEW`)
+- `status` (optional, defaults to `new`)
+
+The dashboard now includes a seeded CSV import preview so operators can verify:
+- missing required headers before import
+- invalid or missing row data
+- duplicate lead emails inside the same file
+- status normalization before database writes
 
 ## Manual QA checklist
+Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoints:
 - [ ] App starts locally (`npm run dev`) without runtime errors.
 - [ ] Lead list/dashboard loads with demo data.
-- [ ] Creating and editing a lead works end-to-end.
+- [ ] Queue ordering, timeline history, and audit log match the seeded operator flow.
+- [ ] CSV preview shows valid rows, blocked rows, and duplicate warnings before import.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
 - [ ] Outbound actions remain blocked unless `SEND_MODE=live` is intentionally enabled.
 - [ ] No secrets are printed in logs or committed to git.
@@ -58,6 +67,7 @@ Expected headers:
 - No secrets in source control
 - Audit logs are expected for generated/sent actions
 - Home dashboard now shows a lightweight audit trail for lead, draft, feedback, and safety-mode events
+- Feedback triage now includes an escalation snapshot so reviewers can spot urgent notes and the oldest unresolved item before the next demo
 
 ## Stale lead detection
 - `detectStaleLeads()` evaluates leads against a configurable inactivity window
@@ -186,6 +196,11 @@ Capture these checkpoints before asking for review or merge:
 npm test -- --run
 ```
 
+Useful targeted regression commands:
+```bash
+npm test -- --run src/tests/queue.test.ts src/tests/operator-workflow.test.tsx
+npm run build
+```
 Current automated coverage includes:
 - runtime safety defaults for `SEND_MODE`
 - feedback normalization and validation paths
@@ -199,6 +214,13 @@ Launch validation stack:
 Core focus areas:
 - status transitions
 - follow-up sequence logic
+- queue prioritization, including stale-vs-fresh ordering within the same status bucket
+- exclusion of won/lost leads from the operator queue
+- stale/hot lead detection
+- CSV import parsing/preview validation
+- feedback normalization, summary metrics, and seeded inbox review flow
+- notes/timeline helpers plus seeded operator-history coverage
+- audit-log coverage and seeded operator workflow regressions
 - queue prioritization
 - stale lead detection
 - hot lead prioritization
@@ -233,6 +255,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `Lead.notes` stays available for quick summary text.
 - `LeadNote` supports structured per-lead notes with timestamps.
 - `LeadEvent` uses normalized `LeadEventType` values for an auditable activity timeline.
+- The dashboard now renders seeded per-lead note previews plus newest-first timeline events so manual QA can verify history without touching live outbound flows.
 
 ## Audit log
 - `AuditLog` is the canonical persistence model for operator-visible action history.
@@ -241,7 +264,9 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 
 ## Feedback capture
 - Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
-- Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
+- The dashboard now includes a seeded feedback inbox plus summary metrics so reviewers can see draft-quality, UX, and bug feedback in the same manual-safe workspace.
+- Negative or low-score feedback is also promoted into a lightweight follow-up queue so operators can triage the riskiest items before the next demo.
+- Capture shape: category, sentiment, freeform message, optional 1-5 score, optional `leadId`, source channel, and structured metadata.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
 ## AI provider abstraction
@@ -266,6 +291,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 ## Environment variables
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
+- Manual QA runbook: [`docs/manual-qa.md`](docs/manual-qa.md)
 - Minimum local values: `DATABASE_URL` and `SEND_MODE=manual`
 - Use `SEND_MODE=test` only when you want explicit non-live validation behavior beyond the default manual mode
 - AI provider keys are optional and only needed for draft-generation testing
@@ -299,7 +325,13 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 6. Import a short CSV and verify new leads appear
 
 ## Deployment
-See [`docs/deployment.md`](docs/deployment.md) for production-safe deployment steps and post-deploy checks.
+See [`docs/deployment.md`](docs/deployment.md) for the full manual-safe rollout runbook. Quick release path:
+
+1. Keep `SEND_MODE=manual` in the target environment.
+2. Run `npm ci`, `npm test -- --run`, and `npm run build` on the release candidate.
+3. Apply schema changes with `npx prisma migrate deploy`.
+4. Start the app, then smoke-test `/` for queue metrics, audit log, timeline cards, manual QA coverage, and the CSV preview.
+5. Keep the previous good branch/artifact ready so rollback is one command, not a scramble.
 
 Recommended launch order:
 1. Validate locally with seed data and manual QA
