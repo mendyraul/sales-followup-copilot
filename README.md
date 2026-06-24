@@ -190,6 +190,8 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `lib/draftWorkflow.ts` provides `createDraft`, `approveDraft`, `editDraft`, and `rejectDraft` helpers for a strict pending -> approved/rejected revision flow.
 - Editing a draft preserves lineage by superseding the prior revision and creating a fresh pending version (`draft-id-v2`, etc.).
 - Rejections require a reason so manual QA and future coaching have an auditable explanation.
+- Each revised draft now keeps both `supersedesId` and `supersededById`, so draft history can be reconstructed from any revision for operator review.
+- `draftHistory()` and `currentDraftRevision()` expose that lineage for future UI/history rendering without guessing which revision is current.
 
 ## Environment variables
 - See `.env.example` for the template
