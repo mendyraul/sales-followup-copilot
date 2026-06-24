@@ -1,0 +1,53 @@
+import { createAuditEntry, type AuditLogEntry } from '../domain/audit';
+
+export const demoAuditLog: AuditLogEntry[] = [
+  createAuditEntry({
+    id: 'audit-001',
+    action: 'lead_created',
+    entityType: 'lead',
+    entityId: 'lead-demo-001',
+    actor: 'rico-demo',
+    summary: 'Created Avery Smith from inbound website form.',
+    createdAt: '2026-06-10T06:10:00.000Z',
+    payload: { source: 'website_form' },
+  }),
+  createAuditEntry({
+    id: 'audit-002',
+    action: 'lead_status_changed',
+    entityType: 'lead',
+    entityId: 'lead-demo-002',
+    actor: 'rico-demo',
+    summary: 'Moved Jordan Lee from new to contacted after first call attempt.',
+    createdAt: '2026-06-10T06:40:00.000Z',
+    payload: { from: 'new', to: 'contacted' },
+  }),
+  createAuditEntry({
+    id: 'audit-003',
+    action: 'follow_up_drafted',
+    entityType: 'follow_up_draft',
+    entityId: 'draft-demo-001',
+    actor: 'mock-ai',
+    summary: 'Generated a manual-review follow-up draft for Morgan Patel.',
+    createdAt: '2026-06-10T07:00:00.000Z',
+    payload: { leadId: 'lead-demo-003', provider: 'mock' },
+  }),
+  createAuditEntry({
+    id: 'audit-004',
+    action: 'feedback_captured',
+    entityType: 'feedback',
+    entityId: 'feedback-demo-001',
+    actor: 'qa-reviewer',
+    summary: 'Captured QA feedback that the draft needed a shorter opening line.',
+    createdAt: '2026-06-10T07:08:00.000Z',
+    payload: { category: 'result_quality', rating: 3 },
+  }),
+  createAuditEntry({
+    id: 'audit-005',
+    action: 'system_mode_checked',
+    entityType: 'system',
+    actor: 'runtime-guard',
+    summary: 'Confirmed SEND_MODE is manual before any outbound action.',
+    createdAt: '2026-06-10T07:16:00.000Z',
+    payload: { sendMode: 'manual' },
+  }),
+];

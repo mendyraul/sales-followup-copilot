@@ -1,0 +1,160 @@
+import { describe, expect, it } from 'vitest';
+import { demoFeedbackEntries } from '../data/demoFeedback';
+import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+
+describe('feedback normalization', () => {
+  it('trims message and defaults source', () => {
+    const out = normalizeFeedback({
+      category: 'ux',
+      sentiment: 'neutral',
+      message: '  Needs better copy on the queue card.  '
+    });
+
+    expect(out.message).toBe('Needs better copy on the queue card.');
+    expect(out.source).toBe('in_app');
+    expect(out.resolved).toBe(false);
+  });
+
+  it('rejects empty feedback', () => {
+    expect(() =>
+      normalizeFeedback({
+        category: 'bug',
+        sentiment: 'negative',
+        message: '   '
+      })
+    ).toThrow('Feedback message is required');
+  });
+
+  it('rejects non-integer or out-of-range score', () => {
+    expect(() =>
+      normalizeFeedback({
+        category: 'result_quality',
+        sentiment: 'negative',
+        message: 'Bad draft quality',
+        score: 2.5,
+      })
+    ).toThrow('Feedback score must be an integer between 1 and 5');
+
+    expect(() =>
+      normalizeFeedback({
+        category: 'result_quality',
+        sentiment: 'negative',
+        message: 'Bad draft quality',
+        score: 6,
+      })
+    ).toThrow('Feedback score must be an integer between 1 and 5');
+  });
+
+  it('summarizes seeded feedback for operator review', () => {
+    expect(summarizeFeedback(demoFeedbackEntries)).toEqual({
+      total: 3,
+      categories: {
+        ux: 1,
+        bug: 1,
+        result_quality: 1,
+        other: 0,
+      },
+      sentiments: {
+        positive: 1,
+        neutral: 1,
+        negative: 1,
+      },
+      averageScore: 3.3,
+      latestAt: '2026-06-10T07:32:00.000Z',
+      openCount: 2,
+      resolvedCount: 1,
+    });
+  });
+
+  it('orders recent feedback newest-first', () => {
+    expect(recentFeedback(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
+      'feedback-demo-003',
+      'feedback-demo-002',
+      'feedback-demo-001',
+    ]);
+  });
+
+  it('preserves explicit resolved state from captured feedback', () => {
+    const resolved = normalizeFeedback({
+      category: 'ux',
+      sentiment: 'positive',
+      message: 'Fixed after QA review',
+      resolved: true,
+    });
+
+    expect(resolved.resolved).toBe(true);
+  });
+
+  it('reports latestAt from the newest record even when input order drifts', () => {
+    const outOfOrder = [demoFeedbackEntries[0], demoFeedbackEntries[2], demoFeedbackEntries[1]];
+
+    expect(summarizeFeedback(outOfOrder)).toMatchObject({
+      latestAt: '2026-06-10T07:32:00.000Z',
+    });
+  });
+
+  it('prioritizes only unresolved negative or low-score feedback for follow-up', () => {
+    expect(feedbackNeedsAttention(demoFeedbackEntries).map((entry) => entry.id)).toEqual([
+      'feedback-demo-003',
+      'feedback-demo-001',
+    ]);
+  });
+
+
+  it('surfaces repeat feedback hotspots by linked lead', () => {
+    expect(feedbackHotspots(demoFeedbackEntries)).toEqual([
+      {
+        leadId: 'lead-demo-001',
+        totalEntries: 1,
+        openEntries: 1,
+        negativeEntries: 1,
+        latestAt: '2026-06-10T07:32:00.000Z',
+      },
+      {
+        leadId: 'lead-demo-003',
+        totalEntries: 1,
+        openEntries: 1,
+        negativeEntries: 0,
+        latestAt: '2026-06-10T07:08:00.000Z',
+      },
+      {
+        leadId: 'lead-demo-002',
+        totalEntries: 1,
+        openEntries: 0,
+        negativeEntries: 0,
+        latestAt: '2026-06-10T07:20:00.000Z',
+      },
+    ]);
+  });
+
+  it('skips resolved low-score feedback in the follow-up queue', () => {
+    const resolvedLowScore = demoFeedbackEntries.map((entry) =>
+      entry.id === 'feedback-demo-001' ? { ...entry, resolved: true } : entry
+    );
+
+    expect(feedbackNeedsAttention(resolvedLowScore).map((entry) => entry.id)).toEqual(['feedback-demo-003']);
+  });
+
+
+  it('marks unresolved aged feedback as urgent escalation', () => {
+    expect(feedbackEscalation(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toBe('urgent');
+    expect(feedbackEscalation(demoFeedbackEntries[0], new Date('2026-06-10T08:00:00.000Z'))).toBe('fresh');
+    expect(feedbackEscalation({ ...demoFeedbackEntries[1], resolved: true }, new Date('2026-06-12T08:00:00.000Z'))).toBe('resolved');
+  });
+
+  it('generates manual-safe action hints for open and resolved feedback', () => {
+    expect(feedbackActionHint(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toContain('Overdue bug follow-up');
+    expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
+  });
+
+  it('summarizes escalation buckets and oldest open feedback', () => {
+    expect(summarizeFeedbackEscalations(demoFeedbackEntries, new Date('2026-06-12T08:00:00.000Z'))).toEqual({
+      urgent: 1,
+      watch: 1,
+      fresh: 0,
+      resolved: 1,
+      open: 2,
+      oldestOpenAt: '2026-06-10T07:08:00.000Z',
+    });
+  });
+});
