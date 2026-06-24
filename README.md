@@ -127,6 +127,11 @@ Before sharing this with a real user or pilot customer, verify:
 npm test -- --run
 ```
 
+Current automated coverage includes:
+- runtime safety defaults for `SEND_MODE`
+- feedback normalization and validation paths
+
+Core focus areas still to expand:
 Launch validation stack:
 - unit tests for queueing, feedback capture, runtime safety, and workflow helpers
 - manual QA for end-to-end lead handling and draft review behavior
