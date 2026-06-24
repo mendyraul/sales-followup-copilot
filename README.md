@@ -1,6 +1,6 @@
 # AI Sales Follow-Up Copilot
 
-Manual-safe MVP for managing sales leads and drafting AI-assisted follow-up messages without enabling live outbound delivery by default.
+Manual-safe MVP for managing sales leads and drafting AI-assisted follow-up messages with explicit manual, test, and live runtime modes.
 
 ## Why this exists
 Small teams lose deals when follow-ups are inconsistent. This project provides a structured queue, suggested next actions, and editable message drafts so humans can move faster while staying in control.
@@ -45,11 +45,12 @@ Expected headers:
 - [ ] Lead list/dashboard loads with demo data.
 - [ ] Creating and editing a lead works end-to-end.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
-- [ ] Outbound actions remain blocked unless `SEND_MODE=manual` is intentionally changed.
+- [ ] Outbound actions remain blocked unless `SEND_MODE=live` is intentionally enabled.
 - [ ] No secrets are printed in logs or committed to git.
 
 ## Safety-first defaults
 - `SEND_MODE=manual` by default
+- `SEND_MODE=test` is available for explicit dry-run/integration validation without live delivery
 - `SEND_MODE=live` is the only value that enables live sending behavior
 - No live email/SMS sending enabled unless explicitly switched to `live`
 - No production credentials required for local development
@@ -189,6 +190,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - See `.env.example` for the template
 - Full reference: [`docs/environment-variables.md`](docs/environment-variables.md)
 - Minimum local values: `DATABASE_URL` and `SEND_MODE=manual`
+- Use `SEND_MODE=test` only when you want explicit non-live validation behavior beyond the default manual mode
 - AI provider keys are optional and only needed for draft-generation testing
 - Feedback defaults: `FEEDBACK_CAPTURE_ENABLED=true` and `FEEDBACK_DEFAULT_CHANNEL=in_app`
 

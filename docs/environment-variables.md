@@ -33,9 +33,9 @@ NEXT_PUBLIC_APP_NAME="Sales Follow-Up Copilot"
 Controls outbound behavior.
 
 Allowed values:
-- `manual` (default, recommended): no live outbound sending
-- `test`: allows test-mode send paths
-- `live`: reserved for controlled production rollout
+- `manual` (default, recommended): strict local/manual review mode with no live outbound sending
+- `test`: explicit non-live validation mode for dry-run style send-path checks
+- `live`: reserved for controlled production rollout and real outbound delivery
 
 ### `AI_PROVIDER`
 Provider key for draft generation.
