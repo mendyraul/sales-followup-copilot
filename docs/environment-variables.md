@@ -33,16 +33,20 @@ NEXT_PUBLIC_APP_NAME="Sales Follow-Up Copilot"
 Controls outbound behavior.
 
 Allowed values:
-- `manual` (default, recommended): no live outbound sending
-- `test`: allows test-mode send paths
-- `live`: reserved for controlled production rollout
+- `manual` (default, recommended): strict local/manual review mode with no live outbound sending
+- `test`: explicit non-live validation mode for dry-run style send-path checks
+- `live`: reserved for controlled production rollout and real outbound delivery
 
 ### `AI_PROVIDER`
 Provider key for draft generation.
 
 Current options:
-- `mock` (default, safe local/dev behavior)
+- `mock` (default, safe local/dev behavior with deterministic local drafts)
 - `openai` (requires `AI_API_KEY`)
+
+Adapter note:
+- `lib/aiProvider.ts` is the provider boundary used by draft-generation code.
+- Keep new providers behind this contract instead of scattering provider-specific API calls across the app.
 
 ### `AI_API_KEY`
 API key used when `AI_PROVIDER=openai`.
