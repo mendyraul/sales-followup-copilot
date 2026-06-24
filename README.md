@@ -59,6 +59,11 @@ Expected headers:
 - Audit logs are expected for generated/sent actions
 - Home dashboard now shows a lightweight audit trail for lead, draft, feedback, and safety-mode events
 
+## Stale lead detection
+- `detectStaleLeads()` evaluates leads against a configurable inactivity window
+- Paused and closed leads are intentionally excluded from stale alerts
+- Leads with no contact history are flagged immediately for manual review
+
 ## Prerequisites
 - Node.js 20+
 - npm 10+
