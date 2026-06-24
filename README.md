@@ -115,17 +115,71 @@ Expected headers:
 
 Open `http://localhost:3000`.
 
-## Launch checklist
-Before sharing this with a real user or pilot customer, verify:
+## Launch README / operator playbook
 
-- [ ] `.env` is populated from `.env.example` with non-production secrets only
-- [ ] `SEND_MODE=manual` remains the default everywhere
-- [ ] Demo/seed data loads cleanly or a sample CSV import succeeds
-- [ ] Queue, stale/hot flags, and next-action guidance render without runtime errors
-- [ ] Lead notes, timeline, and feedback capture persist correctly
-- [ ] Manual QA checklist in `docs/manual-qa-checklist.md` is completed
-- [ ] Deployment/env docs match the actual runtime setup
-- [ ] No outbound integrations are silently enabled
+### What this MVP ships
+- queue-first lead review for stale and hot follow-up candidates
+- AI-assisted draft generation that stays human-reviewed by default
+- timeline, notes, and audit visibility for manual-safe operations
+- local demo/test flows that do not require production credentials
+
+### Launch goals
+This branch is intended to be demoable and testable without enabling live outbound messaging. The success condition is a human operator being able to review leads, generate/edit drafts, and verify history/audit behavior locally before any promotion step.
+
+### Launch readiness checklist
+
+#### Environment
+- [ ] `.env` copied from `.env.example`
+- [ ] `docker compose up -d db` succeeds
+- [ ] `npx prisma migrate dev --name init` succeeds
+- [ ] `npm run dev` boots locally
+
+#### Validation
+- [ ] `npm test -- --run` passes
+- [ ] `npm run build` passes
+- [ ] Dashboard loads with demo or imported lead data
+
+#### Operator flow
+- [ ] Queue shows stale/hot leads in expected order
+- [ ] Draft generation works in manual/test mode
+- [ ] Edit / approve / reject flow remains human-controlled
+- [ ] Notes, timeline, and audit surfaces render expected context
+- [ ] No live provider is enabled by default
+
+### Recommended launch walk-through
+1. Run the automated checks first:
+   ```bash
+   npm test -- --run
+   npm run build
+   ```
+2. Start the app locally with `npm run dev`.
+3. Smoke-test the operator flow:
+   - review the queue ordering
+   - inspect lead notes/timeline context
+   - generate a draft in manual mode
+   - edit, approve, or reject without enabling live send
+4. Confirm audit/history output matches the action taken.
+5. Record any missing behavior before merging or promoting the branch.
+
+### Manual QA focus
+- queue prioritization and stale/hot lead grouping
+- prompt quality and manual-safe wording
+- timeline/history visibility for per-lead context
+- audit coverage for operator-visible actions
+- local-only behavior when credentials are absent
+
+### Common launch blockers and fast fixes
+- `PrismaClientInitializationError` or connection failures: make sure `docker compose up -d db` is running and `DATABASE_URL` in `.env` still matches `.env.example`.
+- Empty dashboard after boot: run `npm run db:seed` or import a starter CSV before validating queue/timeline behavior.
+- Draft generation seems unavailable: keep `SEND_MODE=manual`, then set `AI_PROVIDER=mock` for local smoke tests so draft review stays manual-safe.
+- `npm run build` fails after schema changes: rerun `npx prisma migrate dev --name init` (or your latest migration) so generated Prisma artifacts match the schema.
+- CSV import rejects rows: compare the file headers with the `CSV lead import` section above before retrying.
+
+### Operator sign-off notes
+Capture these checkpoints before asking for review or merge:
+- which demo path you validated (seeded data, imported CSV, or both)
+- whether draft review stayed in manual/mock mode for the whole session
+- any queue, timeline, or feedback gaps still worth filing before beta promotion
 
 ## Testing
 ```bash
