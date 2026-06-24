@@ -61,6 +61,7 @@ Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoi
 - No secrets in source control
 - Audit logs are expected for generated/sent actions
 - Home dashboard now shows a lightweight audit trail for lead, draft, feedback, and safety-mode events
+- Feedback triage now includes an escalation snapshot so reviewers can spot urgent notes and the oldest unresolved item before the next demo
 
 ## Prerequisites
 - Node.js 20+
@@ -113,6 +114,7 @@ Core focus areas:
 - exclusion of won/lost leads from the operator queue
 - stale/hot lead detection
 - CSV import parsing/preview validation
+- feedback normalization, summary metrics, and seeded inbox review flow
 - notes/timeline helpers plus seeded operator-history coverage
 - audit-log coverage and seeded operator workflow regressions
 - opt-out safety checks
@@ -144,7 +146,9 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 
 ## Feedback capture
 - Feedback is stored in `FeedbackEntry` for manual QA and product iteration.
-- Capture shape: 1-5 `rating`, optional `category`, optional `comments`, optional `leadId`, and source `channel`.
+- The dashboard now includes a seeded feedback inbox plus summary metrics so reviewers can see draft-quality, UX, and bug feedback in the same manual-safe workspace.
+- Negative or low-score feedback is also promoted into a lightweight follow-up queue so operators can triage the riskiest items before the next demo.
+- Capture shape: category, sentiment, freeform message, optional 1-5 score, optional `leadId`, source channel, and structured metadata.
 - Docs: [`docs/feedback-capture.md`](docs/feedback-capture.md)
 
 ## Environment variables
