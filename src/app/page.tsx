@@ -1,10 +1,12 @@
 import React from 'react';
 import { demoAuditLog } from '../data/demoAuditLog';
+import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
+import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -12,6 +14,7 @@ import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '..
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
 const queue = needsAttention(demoLeads);
+const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
@@ -37,6 +40,7 @@ export default function HomePage() {
         <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
         <MetricCard label="CSV preview rows" value={String(csvPreview.validRows.length)} helper="Validated leads ready for import" />
         <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
+        <MetricCard label="Deploy checkpoints" value={String(deploymentSummary.totalItems)} helper="Release guardrails for manual-safe rollout" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
       </section>
 
@@ -184,6 +188,49 @@ export default function HomePage() {
               <li>Checklist doc: <code>docs/manual-qa.md</code></li>
               <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Deployment readiness</h2>
+          <p style={mutedStyle}>
+            A manual-safe release checklist for staging or production so the team can promote stacked PR work without guessing at env, migration, smoke-test, or rollback steps.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {demoDeploymentChecklist.map((item) => (
+              <li key={item.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <strong>{item.title}</strong>
+                  <span style={item.status === 'ready' ? pillStyle : warningPillStyle}>{item.status}</span>
+                </div>
+                <div style={{ ...mutedStyle, marginTop: 6 }}>{item.whyItMatters}</div>
+                <div style={{ marginTop: 8 }}><strong>Verify:</strong> {item.verification}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Release summary</h2>
+            <ul>
+              <li>Total checkpoints: {deploymentSummary.totalItems}</li>
+              <li>Ready checkpoints: {deploymentSummary.readyItems}</li>
+              <li>Watch items: {deploymentSummary.watchItems}</li>
+              <li>Areas covered: {deploymentSummary.areas.join(', ')}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Runbook</h2>
+            <ul>
+              <li>Deployment doc: <code>docs/deployment.md</code></li>
+              <li>Preflight commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
+              <li>Database step: <code>npx prisma migrate deploy</code></li>
+              <li>Rollback rule: keep the previous good branch or artifact ready before promoting the next stacked slice.</li>
             </ul>
           </div>
         </div>

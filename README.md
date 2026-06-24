@@ -180,7 +180,13 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 6. Import a short CSV and verify new leads appear
 
 ## Deployment
-See [`docs/deployment.md`](docs/deployment.md) for production-safe deployment steps and post-deploy checks.
+See [`docs/deployment.md`](docs/deployment.md) for the full manual-safe rollout runbook. Quick release path:
+
+1. Keep `SEND_MODE=manual` in the target environment.
+2. Run `npm ci`, `npm test -- --run`, and `npm run build` on the release candidate.
+3. Apply schema changes with `npx prisma migrate deploy`.
+4. Start the app, then smoke-test `/` for queue metrics, audit log, timeline cards, manual QA coverage, and the CSV preview.
+5. Keep the previous good branch/artifact ready so rollback is one command, not a scramble.
 
 ## Non-goals (for now)
 - Fully autonomous outbound sending

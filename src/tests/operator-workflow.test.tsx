@@ -3,11 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import HomePage from '../app/page';
 import { demoAuditLog } from '../data/demoAuditLog';
+import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
 import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
+import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -18,6 +20,7 @@ describe('operator workflow regression', () => {
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
+    const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
@@ -48,6 +51,12 @@ describe('operator workflow regression', () => {
       watchItems: 1,
       areas: ['startup', 'queue', 'timeline', 'import', 'outbound'],
     });
+    expect(deploymentSummary).toEqual({
+      totalItems: 4,
+      readyItems: 3,
+      watchItems: 1,
+      areas: ['environment', 'database', 'application', 'rollback'],
+    });
 
     expect(timelineSummary).toMatchObject({
       totalEvents: 5,
@@ -73,6 +82,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Audit coverage');
     expect(html).toContain('Lead timeline');
     expect(html).toContain('Timeline summary');
+    expect(html).toContain('Deployment readiness');
+    expect(html).toContain('Release summary');
+    expect(html).toContain('Deploy checkpoints');
     expect(html).toContain('CSV import preview');
     expect(html).toContain('CSV preview rows');
     expect(html).toContain('Manual QA checks');
