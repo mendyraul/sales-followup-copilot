@@ -32,8 +32,15 @@ npm run import:csv -- ./data/leads.csv
 Expected headers:
 - `name` (required)
 - `email` (required)
+- `phone` (optional)
 - `source` (optional)
-- `status` (optional, defaults to `NEW`)
+- `status` (optional, defaults to `new`)
+
+The dashboard now includes a seeded CSV import preview so operators can verify:
+- missing required headers before import
+- invalid or missing row data
+- duplicate lead emails inside the same file
+- status normalization before database writes
 
 ## Manual QA checklist
 - [ ] App starts locally (`npm run dev`) without runtime errors.
@@ -103,6 +110,7 @@ Core focus areas:
 - queue prioritization, including stale-vs-fresh ordering within the same status bucket
 - exclusion of won/lost leads from the operator queue
 - stale/hot lead detection
+- CSV import parsing/preview validation
 - notes/timeline helpers plus seeded operator-history coverage
 - audit-log coverage and seeded operator workflow regressions
 - opt-out safety checks
