@@ -299,6 +299,7 @@ describe('feedback normalization', () => {
       },
       {
         id: 'feedback-5',
+        leadId: undefined,
         category: 'other',
         sentiment: 'negative',
         source: 'internal_note',
