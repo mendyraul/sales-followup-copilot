@@ -201,6 +201,26 @@ describe('next action queue', () => {
     });
   });
 
+  it('switches queue reason copy exactly at the documented age cutoffs', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-edge', name: 'Hot Edge', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' },
+        { id: 'replied-edge', name: 'Replied Edge', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' },
+        { id: 'contacted-edge', name: 'Contacted Edge', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T19:53:00.000Z' },
+        { id: 'new-edge', name: 'New Edge', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-edge': 'Hot lead has gone a full day without a follow-up.',
+      'replied-edge': 'Lead replied and has been waiting more than a day.',
+      'contacted-edge': 'Previously contacted lead is cooling off without a next step.',
+      'new-edge': 'New lead has been sitting untouched for over a day.',
+    });
+  });
+
   it('uses lead age to break ties within the same status bucket', () => {
     const now = new Date('2026-06-18T19:53:00.000Z');
     const leads = [
