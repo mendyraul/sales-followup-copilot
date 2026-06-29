@@ -221,6 +221,26 @@ describe('next action queue', () => {
     });
   });
 
+  it('keeps the fresh queue reason copy right until the cutoff boundary', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-pre-edge', name: 'Hot Pre Edge', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' },
+        { id: 'replied-pre-edge', name: 'Replied Pre Edge', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' },
+        { id: 'contacted-pre-edge', name: 'Contacted Pre Edge', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T20:53:00.000Z' },
+        { id: 'new-pre-edge', name: 'New Pre Edge', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-pre-edge': 'Hot lead needs the fastest response.',
+      'replied-pre-edge': 'Lead replied and should get a follow-up queued.',
+      'contacted-pre-edge': 'Contacted lead needs the next action scheduled.',
+      'new-pre-edge': 'New lead should receive a first follow-up draft.',
+    });
+  });
+
   it('uses lead age to break ties within the same status bucket', () => {
     const now = new Date('2026-06-18T19:53:00.000Z');
     const leads = [
