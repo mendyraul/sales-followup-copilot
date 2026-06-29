@@ -34,6 +34,42 @@ describe('next action queue', () => {
     expect(action.reason).toContain('replied');
   });
 
+  it('caps the age-based score boost for long-stale leads', () => {
+    const now = new Date('2026-06-20T12:00:00.000Z');
+    const lead = {
+      id: 'old-hot',
+      name: 'Old Hot Lead',
+      status: 'hot',
+      createdAt: '2026-06-01T12:00:00.000Z',
+      updatedAt: '2026-06-10T12:00:00.000Z',
+    } as any;
+
+    const action = getNextAction(lead, now);
+
+    expect(action.ageHours).toBe(240);
+    expect(action.score).toBe(172);
+    expect(nextActionScore(lead, now)).toBe(172);
+    expect(action.band).toBe('urgent');
+  });
+
+  it('uses the same-day nudge guidance for urgent contacted leads', () => {
+    const now = new Date('2026-06-13T06:00:00.000Z');
+    const lead = {
+      id: 'contacted-urgent',
+      name: 'Contacted Urgent',
+      status: 'contacted',
+      createdAt: '2026-06-09T12:00:00.000Z',
+      updatedAt: '2026-06-10T14:00:00.000Z',
+    } as any;
+
+    const action = getNextAction(lead, now);
+
+    expect(action.score).toBe(104);
+    expect(action.band).toBe('urgent');
+    expect(action.label).toBe('Send a nudge today');
+    expect(action.reason).toContain('ready for a same-day nudge');
+  });
+
   it('sorts aged replied leads ahead of fresh contacted leads', () => {
     const now = new Date('2026-06-10T12:00:00.000Z');
     const leads = [
