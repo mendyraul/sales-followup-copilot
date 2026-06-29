@@ -100,6 +100,83 @@ describe('feedback normalization', () => {
     ]);
   });
 
+  it('orders follow-up feedback by escalation, severity, sentiment, and recency', () => {
+    const ordered = feedbackNeedsAttention([
+      {
+        id: 'fresh-low-score',
+        leadId: 'lead-1',
+        category: 'result_quality',
+        sentiment: 'neutral',
+        source: 'in_app',
+        score: 3,
+        message: 'Needs a tighter CTA',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:00:00.000Z',
+      },
+      {
+        id: 'watch-negative',
+        leadId: 'lead-2',
+        category: 'ux',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 4,
+        message: 'Queue card is still confusing',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:30:00.000Z',
+      },
+      {
+        id: 'watch-low-score',
+        leadId: 'lead-3',
+        category: 'result_quality',
+        sentiment: 'neutral',
+        source: 'in_app',
+        score: 2,
+        message: 'Draft quality still needs work',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:45:00.000Z',
+      },
+      {
+        id: 'fresh-negative-newer',
+        leadId: 'lead-4',
+        category: 'ux',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 5,
+        message: 'Still too many clicks',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:59:00.000Z',
+      },
+      {
+        id: 'fresh-negative-older',
+        leadId: 'lead-5',
+        category: 'ux',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 5,
+        message: 'The note form still feels buried',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:15:00.000Z',
+      },
+    ], new Date('2026-06-10T12:00:00.000Z'));
+
+    expect(ordered.map((entry) => entry.id)).toEqual([
+      'watch-low-score',
+      'watch-negative',
+      'fresh-negative-newer',
+      'fresh-negative-older',
+      'fresh-low-score',
+    ]);
+  });
 
   it('surfaces repeat feedback hotspots by linked lead', () => {
     expect(feedbackHotspots(demoFeedbackEntries)).toEqual([
@@ -123,6 +200,92 @@ describe('feedback normalization', () => {
         openEntries: 0,
         negativeEntries: 0,
         latestAt: '2026-06-10T07:20:00.000Z',
+      },
+    ]);
+  });
+
+  it('skips unlinked feedback and keeps hotspot ordering stable across tie-breakers', () => {
+    const hotspots = feedbackHotspots([
+      {
+        id: 'feedback-1',
+        leadId: 'lead-a',
+        category: 'bug',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 2,
+        message: 'Bug report',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T09:00:00.000Z',
+      },
+      {
+        id: 'feedback-2',
+        leadId: 'lead-a',
+        category: 'ux',
+        sentiment: 'neutral',
+        source: 'in_app',
+        score: 3,
+        message: 'UX note',
+        metadata: undefined,
+        resolved: true,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T10:00:00.000Z',
+      },
+      {
+        id: 'feedback-3',
+        leadId: 'lead-b',
+        category: 'result_quality',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 2,
+        message: 'Copy issue',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T11:00:00.000Z',
+      },
+      {
+        id: 'feedback-4',
+        leadId: 'lead-b',
+        category: 'bug',
+        sentiment: 'negative',
+        source: 'in_app',
+        score: 1,
+        message: 'Another bug',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T12:00:00.000Z',
+      },
+      {
+        id: 'feedback-5',
+        category: 'other',
+        sentiment: 'negative',
+        source: 'internal_note',
+        score: 2,
+        message: 'General note without a lead',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'Rico',
+        createdAt: '2026-06-10T13:00:00.000Z',
+      },
+    ]);
+
+    expect(hotspots).toEqual([
+      {
+        leadId: 'lead-b',
+        totalEntries: 2,
+        openEntries: 2,
+        negativeEntries: 2,
+        latestAt: '2026-06-10T12:00:00.000Z',
+      },
+      {
+        leadId: 'lead-a',
+        totalEntries: 2,
+        openEntries: 1,
+        negativeEntries: 1,
+        latestAt: '2026-06-10T10:00:00.000Z',
       },
     ]);
   });
