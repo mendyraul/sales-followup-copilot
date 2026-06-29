@@ -178,6 +178,45 @@ describe('feedback normalization', () => {
     ]);
   });
 
+  it('uses an injected clock for follow-up escalation ordering', () => {
+    const records = [
+      {
+        id: 'feedback-quality',
+        leadId: 'lead-demo-001',
+        category: 'result_quality' as const,
+        sentiment: 'neutral' as const,
+        source: 'in_app' as const,
+        score: 3,
+        message: 'Needs a tighter opener.',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'qa@demo.test',
+        createdAt: '2026-06-10T00:00:00.000Z',
+      },
+      {
+        id: 'feedback-negative',
+        leadId: 'lead-demo-002',
+        category: 'ux' as const,
+        sentiment: 'negative' as const,
+        source: 'in_app' as const,
+        score: 4,
+        message: 'Queue review flow still feels awkward.',
+        metadata: undefined,
+        resolved: false,
+        reviewer: 'qa@demo.test',
+        createdAt: '2026-06-11T00:00:00.000Z',
+      },
+    ];
+
+    expect(
+      feedbackNeedsAttention(records, new Date('2026-06-11T12:00:00.000Z')).map((entry) => entry.id)
+    ).toEqual(['feedback-quality', 'feedback-negative']);
+
+    expect(
+      feedbackNeedsAttention(records, new Date('2026-06-12T12:30:00.000Z')).map((entry) => entry.id)
+    ).toEqual(['feedback-negative', 'feedback-quality']);
+  });
+
   it('surfaces repeat feedback hotspots by linked lead', () => {
     expect(feedbackHotspots(demoFeedbackEntries)).toEqual([
       {
