@@ -161,6 +161,26 @@ describe('next action queue', () => {
     expect(groups.low.map((item) => item.lead.id)).toEqual(['new']);
   });
 
+  it('keeps short-form operator queue reasons stable across active lead states', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-fast', name: 'Hot Fast', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-18T16:53:00.000Z' },
+        { id: 'replied-fresh', name: 'Replied Fresh', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-18T13:53:00.000Z' },
+        { id: 'contacted-fresh', name: 'Contacted Fresh', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-18T15:53:00.000Z' },
+        { id: 'new-fresh', name: 'New Fresh', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-18T18:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(queue.map((item) => [item.lead.id, item.reason])).toEqual([
+      ['hot-fast', 'Hot lead needs the fastest response.'],
+      ['replied-fresh', 'Lead replied and should get a follow-up queued.'],
+      ['contacted-fresh', 'Contacted lead needs the next action scheduled.'],
+      ['new-fresh', 'New lead should receive a first follow-up draft.'],
+    ]);
+  });
+
   it('uses lead age to break ties within the same status bucket', () => {
     const now = new Date('2026-06-18T19:53:00.000Z');
     const leads = [
