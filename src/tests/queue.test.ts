@@ -155,4 +155,12 @@ describe('next action queue', () => {
 
     expect(queueOrder).toEqual(attentionOrder);
   });
+
+  it('keeps seeded priority lanes in dashboard display order', () => {
+    const groups = groupQueueByPriority(buildQueue(demoLeads));
+
+    expect(groups.high.map((item) => item.lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002']);
+    expect(groups.medium.map((item) => item.lead.id)).toEqual(['lead-demo-001']);
+    expect(groups.low).toEqual([]);
+  });
 });
