@@ -9,15 +9,15 @@ import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { listFollowUpStages } from '../domain/followup';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 import { listHotLeads } from '../domain/hot-lead';
 import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
-const queue = needsAttention(demoLeads);
+const queue = buildQueue(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
