@@ -181,6 +181,26 @@ describe('next action queue', () => {
     ]);
   });
 
+  it('keeps aged operator queue reasons stable across threshold boundaries', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-stale', name: 'Hot Stale', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T17:53:00.000Z' },
+        { id: 'replied-stale', name: 'Replied Stale', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T18:53:00.000Z' },
+        { id: 'contacted-stale', name: 'Contacted Stale', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T18:53:00.000Z' },
+        { id: 'new-stale', name: 'New Stale', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T17:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-stale': 'Hot lead has gone a full day without a follow-up.',
+      'replied-stale': 'Lead replied and has been waiting more than a day.',
+      'contacted-stale': 'Previously contacted lead is cooling off without a next step.',
+      'new-stale': 'New lead has been sitting untouched for over a day.',
+    });
+  });
+
   it('uses lead age to break ties within the same status bucket', () => {
     const now = new Date('2026-06-18T19:53:00.000Z');
     const leads = [
