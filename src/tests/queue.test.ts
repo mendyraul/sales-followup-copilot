@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { demoLeads } from '../data/demoLeads';
 import { buildQueue, getNextAction, groupQueueByPriority, needsAttention, nextActionScore, queuePriority } from '../domain/queue';
 
 describe('next action queue', () => {
@@ -146,5 +147,12 @@ describe('next action queue', () => {
 
     const queue = needsAttention(leads, now as any);
     expect(queue.map((lead) => lead.id)).toEqual(['new-lead']);
+  });
+
+  it('keeps seeded dashboard ordering aligned between needsAttention and buildQueue', () => {
+    const attentionOrder = needsAttention(demoLeads).map((lead) => lead.id);
+    const queueOrder = buildQueue(demoLeads).map((item) => item.lead.id);
+
+    expect(queueOrder).toEqual(attentionOrder);
   });
 });
