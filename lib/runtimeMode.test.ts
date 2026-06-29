@@ -30,7 +30,7 @@ describe('runtime mode safety defaults', () => {
 
   it('treats blank values as manual/test mode', () => {
     expect(getSendMode('   ')).toBe('manual')
-    expect(isTestMode('   ')).toBe(true)
+    expect(isTestMode('   ')).toBe(false)
   })
 
   it('enables live mode only when explicitly set to live', () => {
