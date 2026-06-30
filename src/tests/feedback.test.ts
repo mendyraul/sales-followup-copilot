@@ -350,6 +350,165 @@ describe('feedback normalization', () => {
     expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
   });
 
+  it('keeps operator feedback action hints stable across categories and urgency states', () => {
+    const freshNow = new Date('2026-06-10T12:00:00.000Z');
+    const urgentNow = new Date('2026-06-14T12:00:00.000Z');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'negative-fresh',
+          leadId: 'lead-1',
+          category: 'other',
+          sentiment: 'negative',
+          source: 'in_app',
+          score: 4,
+          message: 'Need a human review before another send.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T11:00:00.000Z',
+        },
+        freshNow
+      )
+    ).toBe('Review the linked draft or queue state with a human before sending anything else.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'negative-urgent',
+          leadId: 'lead-2',
+          category: 'other',
+          sentiment: 'negative',
+          source: 'in_app',
+          score: 4,
+          message: 'Still blocked on a human check.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T11:00:00.000Z',
+        },
+        urgentNow
+      )
+    ).toBe(
+      'Overdue reviewer concern — pause new outreach and resolve the linked draft or queue issue with a human first.'
+    );
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'quality-fresh',
+          leadId: 'lead-3',
+          category: 'result_quality',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 4,
+          message: 'Tighten the opener.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T10:00:00.000Z',
+        },
+        freshNow
+      )
+    ).toBe('Tighten the draft copy and confirm the next version addresses the reviewer note.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'quality-urgent',
+          leadId: 'lead-4',
+          category: 'result_quality',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 4,
+          message: 'Copy still needs work.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T10:00:00.000Z',
+        },
+        urgentNow
+      )
+    ).toBe('Overdue copy fix — tighten the draft and re-check it with a human before the next follow-up.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'ux-fresh',
+          leadId: 'lead-5',
+          category: 'ux',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 4,
+          message: 'Queue card is a little busy.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T09:00:00.000Z',
+        },
+        freshNow
+      )
+    ).toBe('Verify the operator workflow stays obvious without adding automation risk.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'ux-urgent',
+          leadId: 'lead-6',
+          category: 'ux',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 4,
+          message: 'The workflow still feels hidden.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T09:00:00.000Z',
+        },
+        urgentNow
+      )
+    ).toBe('Verify the operator workflow stays obvious without adding automation risk.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'general-fresh',
+          leadId: 'lead-7',
+          category: 'other',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 5,
+          message: 'General note for later.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T08:00:00.000Z',
+        },
+        freshNow
+      )
+    ).toBe('Log the note, confirm the context, and decide the next manual-safe follow-up.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'general-urgent',
+          leadId: 'lead-8',
+          category: 'other',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 5,
+          message: 'Older general note.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T08:00:00.000Z',
+        },
+        urgentNow
+      )
+    ).toBe('Log the note, confirm the context, and decide the next manual-safe follow-up.');
+  });
+
   it('summarizes escalation buckets and oldest open feedback', () => {
     expect(summarizeFeedbackEscalations(demoFeedbackEntries, new Date('2026-06-12T08:00:00.000Z'))).toEqual({
       urgent: 1,
