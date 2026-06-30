@@ -345,6 +345,43 @@ describe('feedback normalization', () => {
     expect(feedbackEscalation({ ...demoFeedbackEntries[1], resolved: true }, new Date('2026-06-12T08:00:00.000Z'))).toBe('resolved');
   });
 
+  it('locks feedback escalation thresholds at the exact 24h and 72h cutoffs', () => {
+    const lowScoreQuality = {
+      id: 'quality-threshold',
+      leadId: 'lead-threshold-1',
+      category: 'result_quality' as const,
+      sentiment: 'neutral' as const,
+      source: 'in_app' as const,
+      score: 3,
+      message: 'Needs a tighter next step.',
+      metadata: undefined,
+      resolved: false,
+      reviewer: 'Rico',
+      createdAt: '2026-06-10T12:00:00.000Z',
+    };
+    const negativeFeedback = {
+      id: 'negative-threshold',
+      leadId: 'lead-threshold-2',
+      category: 'other' as const,
+      sentiment: 'negative' as const,
+      source: 'in_app' as const,
+      score: 4,
+      message: 'This still needs a human pass.',
+      metadata: undefined,
+      resolved: false,
+      reviewer: 'Rico',
+      createdAt: '2026-06-10T12:00:00.000Z',
+    };
+
+    expect(feedbackEscalation(lowScoreQuality, new Date('2026-06-11T11:59:59.000Z'))).toBe('fresh');
+    expect(feedbackEscalation(lowScoreQuality, new Date('2026-06-11T12:00:00.000Z'))).toBe('watch');
+    expect(feedbackEscalation(lowScoreQuality, new Date('2026-06-13T11:59:59.000Z'))).toBe('watch');
+    expect(feedbackEscalation(lowScoreQuality, new Date('2026-06-13T12:00:00.000Z'))).toBe('urgent');
+
+    expect(feedbackEscalation(negativeFeedback, new Date('2026-06-11T11:59:59.000Z'))).toBe('watch');
+    expect(feedbackEscalation(negativeFeedback, new Date('2026-06-11T12:00:00.000Z'))).toBe('urgent');
+  });
+
   it('generates manual-safe action hints for open and resolved feedback', () => {
     expect(feedbackActionHint(demoFeedbackEntries[2], new Date('2026-06-12T08:00:00.000Z'))).toContain('Overdue bug follow-up');
     expect(feedbackActionHint({ ...demoFeedbackEntries[1], resolved: true })).toContain('Resolved');
