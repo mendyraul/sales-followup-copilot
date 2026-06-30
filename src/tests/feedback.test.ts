@@ -538,4 +538,17 @@ describe('feedback normalization', () => {
       oldestOpenAt: '2026-06-10T07:08:00.000Z',
     });
   });
+
+  it('keeps oldestOpenAt empty when every feedback item is already resolved', () => {
+    const resolvedOnly = demoFeedbackEntries.map((entry) => ({ ...entry, resolved: true }));
+
+    expect(summarizeFeedbackEscalations(resolvedOnly, new Date('2026-06-12T08:00:00.000Z'))).toEqual({
+      urgent: 0,
+      watch: 0,
+      fresh: 0,
+      resolved: 3,
+      open: 0,
+      oldestOpenAt: null,
+    });
+  });
 });
