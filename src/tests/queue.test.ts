@@ -138,6 +138,30 @@ describe('next action queue', () => {
     });
   });
 
+  it('clamps future timestamps to zero age in queue metadata', () => {
+    const now = new Date('2026-06-10T12:00:00.000Z');
+    const queue = buildQueue(
+      [
+        {
+          id: 'future-contacted',
+          name: 'Future Contacted',
+          status: 'contacted',
+          createdAt: '2026-06-10T12:00:00.000Z',
+          updatedAt: '2026-06-11T12:00:00.000Z',
+        },
+      ] as any,
+      now
+    );
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({
+      ageHours: 0,
+      priority: 'low',
+      reason: 'Contacted lead needs the next action scheduled.',
+      score: 40,
+    });
+  });
+
   it('maps scores to stable priority bands', () => {
     expect(queuePriority(120)).toBe('high');
     expect(queuePriority(70)).toBe('medium');
