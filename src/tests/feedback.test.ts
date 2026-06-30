@@ -397,8 +397,27 @@ describe('feedback normalization', () => {
     expect(
       feedbackActionHint(
         {
-          id: 'quality-fresh',
+          id: 'bug-fresh',
           leadId: 'lead-3',
+          category: 'bug',
+          sentiment: 'neutral',
+          source: 'in_app',
+          score: 4,
+          message: 'Button spacing broke.',
+          metadata: undefined,
+          resolved: false,
+          reviewer: 'Rico',
+          createdAt: '2026-06-10T10:30:00.000Z',
+        },
+        freshNow
+      )
+    ).toBe('Check the linked workflow for a reproducible product bug before the next demo.');
+
+    expect(
+      feedbackActionHint(
+        {
+          id: 'quality-fresh',
+          leadId: 'lead-4',
           category: 'result_quality',
           sentiment: 'neutral',
           source: 'in_app',
@@ -417,7 +436,7 @@ describe('feedback normalization', () => {
       feedbackActionHint(
         {
           id: 'quality-urgent',
-          leadId: 'lead-4',
+          leadId: 'lead-5',
           category: 'result_quality',
           sentiment: 'neutral',
           source: 'in_app',
@@ -436,7 +455,7 @@ describe('feedback normalization', () => {
       feedbackActionHint(
         {
           id: 'ux-fresh',
-          leadId: 'lead-5',
+          leadId: 'lead-6',
           category: 'ux',
           sentiment: 'neutral',
           source: 'in_app',
@@ -454,8 +473,8 @@ describe('feedback normalization', () => {
     expect(
       feedbackActionHint(
         {
-          id: 'ux-urgent',
-          leadId: 'lead-6',
+          id: 'ux-aged',
+          leadId: 'lead-7',
           category: 'ux',
           sentiment: 'neutral',
           source: 'in_app',
@@ -474,7 +493,7 @@ describe('feedback normalization', () => {
       feedbackActionHint(
         {
           id: 'general-fresh',
-          leadId: 'lead-7',
+          leadId: 'lead-8',
           category: 'other',
           sentiment: 'neutral',
           source: 'in_app',
@@ -493,11 +512,11 @@ describe('feedback normalization', () => {
       feedbackActionHint(
         {
           id: 'general-urgent',
-          leadId: 'lead-8',
+          leadId: 'lead-9',
           category: 'other',
           sentiment: 'neutral',
-          source: 'in_app',
-          score: 5,
+          source: 'internal_note',
+          score: 3,
           message: 'Older general note.',
           metadata: undefined,
           resolved: false,
@@ -506,7 +525,7 @@ describe('feedback normalization', () => {
         },
         urgentNow
       )
-    ).toBe('Log the note, confirm the context, and decide the next manual-safe follow-up.');
+    ).toBe('Overdue review note — confirm context and close the loop manually before the next demo.');
   });
 
   it('summarizes escalation buckets and oldest open feedback', () => {
