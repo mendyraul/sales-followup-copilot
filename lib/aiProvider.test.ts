@@ -135,6 +135,52 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('reviewed next step');
   });
 
+  it('surfaces upstream OpenAI status failures', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: { message: 'temporary overload' } })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    await expect(provider.generateDraft({ leadName: 'Jordan' })).rejects.toThrow(
+      'OpenAI draft generation failed with status 503'
+    );
+  });
+
+  it('rejects OpenAI payloads that never include draft output text', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [
+          {
+            content: [
+              {
+                type: 'reasoning',
+                text: 'Thinking about the best follow-up...'
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    await expect(provider.generateDraft({ leadName: 'Jordan' })).rejects.toThrow(
+      'OpenAI draft generation returned no output_text payload.'
+    );
+  });
+
   it('rejects whitespace-only OpenAI draft payloads', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
