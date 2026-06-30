@@ -101,6 +101,49 @@ describe('draft review workflow', () => {
     expect(currentDraftRevision([previousDraft, approved], previousDraft.id)?.id).toBe('draft-1-v2')
   })
 
+  it('walks multi-revision lineage back to the original draft', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    const firstEdit = editDraft(draft, {
+      actor: 'raul',
+      notes: 'Make it warmer and shorter.',
+      content: 'Wanted to follow up and see if a quick next step makes sense.',
+      now: new Date('2026-06-10T08:32:00.000Z'),
+    })
+
+    const secondEdit = editDraft(firstEdit.nextDraft, {
+      actor: 'raul',
+      notes: 'Add a clearer CTA.',
+      content: 'Wanted to follow up and see if a quick recap plus next step would help.',
+      now: new Date('2026-06-10T08:35:00.000Z'),
+    })
+
+    const approved = approveDraft(secondEdit.nextDraft, {
+      actor: 'raul',
+      notes: 'Ship this one.',
+      now: new Date('2026-06-10T08:36:00.000Z'),
+    })
+
+    const records = [
+      firstEdit.previousDraft,
+      secondEdit.previousDraft,
+      approved,
+    ]
+
+    expect(draftHistory(records, approved.id).map((entry) => entry.id)).toEqual([
+      'draft-1',
+      'draft-1-v2',
+    ])
+    expect(currentDraftRevision(records, 'draft-1')?.id).toBe('draft-1-v2-v3')
+    expect(currentDraftRevision(records, 'draft-1-v2')?.id).toBe('draft-1-v2-v3')
+  })
+
   it('returns empty history for unknown drafts', () => {
     expect(draftHistory([], 'missing-draft')).toEqual([])
     expect(currentDraftRevision([], 'missing-draft')).toBeUndefined()
