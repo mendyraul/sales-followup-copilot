@@ -111,6 +111,40 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('next safe step');
   });
 
+  it('falls back to structured output content when top-level output_text is only whitespace', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: '   \n  ',
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, this nested output should still drive the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('nested output should still drive');
+  });
+
   it('accepts JSON wrapped in markdown code fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
