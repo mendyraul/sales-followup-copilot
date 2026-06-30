@@ -194,4 +194,64 @@ describe('draft review workflow', () => {
       }),
     ).toThrow('only pending drafts can be approved')
   })
+
+  it('trims reviewer metadata when approving or editing drafts', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    const approved = approveDraft(draft, {
+      actor: '  raul  ',
+      notes: '  Keep the CTA but soften the opener.  ',
+      now: new Date('2026-06-10T08:31:00.000Z'),
+    })
+
+    expect(approved.reviewLog[0]).toMatchObject({
+      actor: 'raul',
+      notes: 'Keep the CTA but soften the opener.',
+    })
+
+    const revised = editDraft(draft, {
+      actor: '  raul  ',
+      notes: '  Make it warmer.  ',
+      content: '  Wanted to follow up and see if a quick recap would help.  ',
+      now: new Date('2026-06-10T08:32:00.000Z'),
+    })
+
+    expect(revised.previousDraft.reviewLog[0]).toMatchObject({
+      actor: 'raul',
+      notes: 'Make it warmer.',
+      nextDraftId: 'draft-1-v2',
+    })
+    expect(revised.nextDraft).toMatchObject({
+      id: 'draft-1-v2',
+      content: 'Wanted to follow up and see if a quick recap would help.',
+    })
+    expect(revised.nextDraft.reviewLog[0]).toMatchObject({
+      actor: 'raul',
+      notes: 'Make it warmer.',
+    })
+  })
+
+  it('rejects blank rejection notes after trimming whitespace', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    expect(() =>
+      rejectDraft(draft, {
+        actor: 'raul',
+        notes: '   ',
+        now: new Date('2026-06-10T08:33:00.000Z'),
+      }),
+    ).toThrow('notes is required')
+  })
 })
