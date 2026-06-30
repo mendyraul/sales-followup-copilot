@@ -254,4 +254,39 @@ describe('draft review workflow', () => {
       }),
     ).toThrow('notes is required')
   })
+
+  it('blocks blank reviewer actors across approve, edit, and reject actions', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    expect(() =>
+      approveDraft(draft, {
+        actor: '   ',
+        notes: 'Looks fine.',
+        now: new Date('2026-06-10T08:31:00.000Z'),
+      }),
+    ).toThrow('actor is required')
+
+    expect(() =>
+      editDraft(draft, {
+        actor: '\n\t  ',
+        notes: 'Tighten the opener.',
+        content: 'Wanted to follow up with a tighter next step.',
+        now: new Date('2026-06-10T08:32:00.000Z'),
+      }),
+    ).toThrow('actor is required')
+
+    expect(() =>
+      rejectDraft(draft, {
+        actor: '  ',
+        notes: 'Needs a clearer CTA before review.',
+        now: new Date('2026-06-10T08:33:00.000Z'),
+      }),
+    ).toThrow('actor is required')
+  })
 })
