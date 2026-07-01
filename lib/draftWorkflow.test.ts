@@ -226,6 +226,64 @@ describe('draft review workflow', () => {
     ).toThrow('only pending drafts can be approved')
   })
 
+  it('blocks editing or rejecting drafts once they are no longer pending', () => {
+    const approvedDraft = approveDraft(
+      createDraft({
+        id: 'draft-approved',
+        leadId: 'lead-1',
+        stage: 'first-follow-up',
+        content: 'Checking in after our demo.',
+        now: new Date('2026-06-10T08:30:00.000Z'),
+      }),
+      {
+        actor: 'raul',
+        notes: 'Ready to send.',
+        now: new Date('2026-06-10T08:31:00.000Z'),
+      },
+    )
+
+    expect(() =>
+      editDraft(approvedDraft, {
+        actor: 'raul',
+        notes: 'Actually tweak the CTA.',
+        content: 'Wanted to follow up with a softer CTA.',
+        now: new Date('2026-06-10T08:32:00.000Z'),
+      }),
+    ).toThrow('only pending drafts can be edited')
+
+    expect(() =>
+      rejectDraft(approvedDraft, {
+        actor: 'raul',
+        notes: 'Never mind.',
+        now: new Date('2026-06-10T08:33:00.000Z'),
+      }),
+    ).toThrow('only pending drafts can be rejected')
+
+    const rejectedDraft = rejectDraft(
+      createDraft({
+        id: 'draft-rejected',
+        leadId: 'lead-2',
+        stage: 'first-follow-up',
+        content: 'Checking in after our demo.',
+        now: new Date('2026-06-10T09:00:00.000Z'),
+      }),
+      {
+        actor: 'raul',
+        notes: 'Tone is off.',
+        now: new Date('2026-06-10T09:01:00.000Z'),
+      },
+    )
+
+    expect(() =>
+      editDraft(rejectedDraft, {
+        actor: 'raul',
+        notes: 'Try a different revision.',
+        content: 'Wanted to follow up with a different tone.',
+        now: new Date('2026-06-10T09:02:00.000Z'),
+      }),
+    ).toThrow('only pending drafts can be edited')
+  })
+
   it('trims reviewer metadata when approving or editing drafts', () => {
     const draft = createDraft({
       id: 'draft-1',
