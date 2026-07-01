@@ -18,12 +18,13 @@ describe('draft review workflow', () => {
     expect(draft.reviewLog).toEqual([])
   })
 
-  it('trims required draft fields on creation and rejects blank revised content', () => {
+  it('trims required draft fields and normalizes the requested send mode', () => {
     const draft = createDraft({
       id: '  draft-1  ',
-      leadId: '  lead-1  ',
+      leadId: '\nlead-1\t',
       stage: '  first-follow-up  ',
       content: '  Checking in after our demo.  ',
+      mode: '  LIVE  ',
       now: new Date('2026-06-10T08:30:00.000Z'),
     })
 
@@ -32,6 +33,19 @@ describe('draft review workflow', () => {
       leadId: 'lead-1',
       stage: 'first-follow-up',
       content: 'Checking in after our demo.',
+      mode: 'live',
+      status: 'pending',
+      version: 1,
+    })
+  })
+
+  it('rejects blank revised content after trimming whitespace', () => {
+    const draft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
     })
 
     expect(() =>
