@@ -102,6 +102,7 @@ export type QueueItem = {
 };
 
 export type QueueGroups = Record<QueuePriority, QueueItem[]>;
+export type LeadWithNextAction = Lead & { nextAction: NextAction };
 
 const ACTIVE_STATUSES = ['new', 'contacted', 'replied', 'hot'] as const;
 type ActiveLeadStatus = (typeof ACTIVE_STATUSES)[number];
@@ -114,11 +115,13 @@ export function nextActionScore(lead: Lead, now = new Date()): number {
   return getNextAction(lead, now).score;
 }
 
-export function needsAttention(leads: Lead[], now = new Date()): Array<Lead & { nextAction: NextAction }> {
+export function needsAttention(leads: Lead[], now = new Date()): LeadWithNextAction[] {
   return [...leads]
-    .filter((lead) => ['new', 'contacted', 'replied', 'hot'].includes(lead.status))
+    .filter((lead) => isActiveStatus(lead.status))
     .map((lead) => ({ ...lead, nextAction: getNextAction(lead, now) }))
     .sort((a, b) => b.nextAction.score - a.nextAction.score);
+}
+
 export function queuePriority(score: number): QueuePriority {
   if (score >= 100) return 'high';
   if (score >= 50) return 'medium';
@@ -168,8 +171,4 @@ export function groupQueueByPriority(queue: QueueItem[]): QueueGroups {
     },
     { high: [], medium: [], low: [] }
   );
-}
-
-export function needsAttention(leads: Lead[], now = new Date()): Lead[] {
-  return buildQueue(leads, now).map((item) => item.lead);
 }

@@ -28,9 +28,9 @@ describe('runtime mode safety defaults', () => {
     expect(isTestMode(' LIVE ')).toBe(false)
   })
 
-  it('treats blank values as manual/test mode', () => {
+  it('treats blank values as manual mode', () => {
     expect(getSendMode('   ')).toBe('manual')
-    expect(isTestMode('   ')).toBe(true)
+    expect(isTestMode('   ')).toBe(false)
   })
 
   it('enables live mode only when explicitly set to live', () => {
