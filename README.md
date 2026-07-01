@@ -204,6 +204,7 @@ npm run build
 Current automated coverage includes:
 - runtime safety defaults for `SEND_MODE`
 - feedback normalization and validation paths
+- draft revision lineage recovery, including broken/cyclic chain guards
 
 Core focus areas still to expand:
 Launch validation stack:

@@ -175,6 +175,40 @@ describe('draft review workflow', () => {
     expect(currentDraftRevision([secondEdit.previousDraft], secondEdit.previousDraft.id)?.id).toBe('draft-1-v2')
   })
 
+  it('breaks safely when loaded lineage data contains a cycle', () => {
+    const firstDraft = createDraft({
+      id: 'draft-1',
+      leadId: 'lead-1',
+      stage: 'first-follow-up',
+      content: 'Checking in after our demo.',
+      now: new Date('2026-06-10T08:30:00.000Z'),
+    })
+
+    const secondDraft = {
+      ...firstDraft,
+      id: 'draft-1-v2',
+      version: 2,
+      createdAt: new Date('2026-06-10T08:31:00.000Z'),
+      updatedAt: new Date('2026-06-10T08:31:00.000Z'),
+      supersedesId: 'draft-1',
+    }
+
+    const cyclicFirst = {
+      ...firstDraft,
+      supersededById: 'draft-1-v2',
+      supersedesId: 'draft-1-v2',
+    }
+
+    const cyclicSecond = {
+      ...secondDraft,
+      supersededById: 'draft-1',
+    }
+
+    expect(draftHistory([cyclicFirst, cyclicSecond], cyclicSecond.id).map((entry) => entry.id)).toEqual(['draft-1'])
+    expect(currentDraftRevision([cyclicFirst, cyclicSecond], cyclicFirst.id)?.id).toBe('draft-1-v2')
+    expect(currentDraftRevision([cyclicFirst, cyclicSecond], cyclicSecond.id)?.id).toBe('draft-1')
+  })
+
   it('returns empty history for unknown drafts', () => {
     expect(draftHistory([], 'missing-draft')).toEqual([])
     expect(currentDraftRevision([], 'missing-draft')).toBeUndefined()
