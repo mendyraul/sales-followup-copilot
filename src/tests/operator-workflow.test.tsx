@@ -31,8 +31,13 @@ describe('operator workflow regression', () => {
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
     const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
 
-    expect(queue).toHaveLength(3);
-    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-002', 'lead-demo-001']);
+    expect(queue).toHaveLength(4);
+    expect(queue.map((lead) => lead.id)).toEqual([
+      'lead-demo-003',
+      'lead-demo-004',
+      'lead-demo-002',
+      'lead-demo-001',
+    ]);
     expect(queue[0]).toMatchObject({
       status: 'hot',
     });

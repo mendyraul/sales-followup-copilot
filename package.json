@@ -11,6 +11,7 @@
     "start": "next start",
     "test": "vitest",
     "lint": "next lint",
+    "pretypecheck": "mkdir -p .next/types/app && touch .next/types/app/layout.ts .next/types/app/page.ts",
     "typecheck": "tsc --noEmit",
     "import:csv": "node scripts/import-leads-csv.mjs"
   },
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@types/node": "25.9.1",
     "@types/react": "19.2.15",
+    "@types/react-dom": "^19.2.3",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.5",
     "prisma": "5.18.0",
