@@ -77,7 +77,7 @@ export function buildFirstFollowupInput(
   }
 
   const sourceContext = request.leadSource?.trim()
-    ? `Lead source: ${request.leadSource?.trim()}.`
+    ? `you first reached out through ${request.leadSource.trim()}`
     : '';
   const recentContext = request.recentContext?.trim() ?? '';
   const combinedContext = [recentContext, sourceContext].filter(Boolean).join(' ');

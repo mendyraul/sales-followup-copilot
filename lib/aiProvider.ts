@@ -82,7 +82,9 @@ export function buildMockDraft(input: DraftGenerationInput): DraftGenerationResu
   const context = input.recentContext?.trim();
   const tone = input.tone ?? 'friendly';
   const companyLine = input.companyName ? ` at ${input.companyName}` : '';
-  const contextLine = context ? `I kept in mind that ${context}. ` : '';
+  const contextLine = context
+    ? `I kept in mind that ${ensureSentence(context)} `
+    : '';
   const toneLine =
     tone === 'direct'
       ? 'I wanted to send a concise follow-up.'
@@ -104,6 +106,10 @@ export function buildMockDraft(input: DraftGenerationInput): DraftGenerationResu
     ].join('\n'),
     warnings: ['mock-provider: deterministic local draft only']
   };
+}
+
+function ensureSentence(value: string): string {
+  return /[.!?]$/.test(value) ? value : `${value}.`;
 }
 
 function createOpenAiProvider(config: AiProviderConfig): AiProvider {

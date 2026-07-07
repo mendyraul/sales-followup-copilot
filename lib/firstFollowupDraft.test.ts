@@ -20,7 +20,7 @@ describe('buildFirstFollowupInput', () => {
     ).toEqual({
       leadName: 'Alex',
       companyName: 'Northwind',
-      recentContext: 'they asked about onboarding timelines Lead source: web demo form.',
+      recentContext: 'they asked about onboarding timelines you first reached out through web demo form',
       objective: 're-engaging after the first conversation and confirming the best next step',
       tone: 'friendly'
     });
@@ -92,7 +92,7 @@ describe('buildFirstFollowupReviewContext', () => {
     ).toEqual({
       leadName: 'Jordan',
       companyName: undefined,
-      recentContext: 'Lead source: partner intro.',
+      recentContext: 'you first reached out through partner intro',
       objective: 're-engaging after the first conversation and confirming the best next step',
       objectiveSource: 'default',
       tone: 'friendly',
@@ -154,5 +154,16 @@ describe('buildDemoFirstFollowupDraft', () => {
       'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail',
       'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be',
     ]);
+  });
+
+  it('renders lead-source-only drafts without awkward punctuation or label copy', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      leadSource: 'partner intro',
+    });
+
+    expect(result.body).toContain('I kept in mind that you first reached out through partner intro.');
+    expect(result.body).not.toContain('Lead source:');
+    expect(result.body).not.toContain('..');
   });
 });
