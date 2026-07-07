@@ -43,6 +43,10 @@ describe('operator workflow regression', () => {
     expect(queue[0]).toMatchObject({
       status: 'hot',
     });
+    expect(dashboardQueue[0].nextAction).toMatchObject({
+      label: 'Call or send a high-touch follow-up now',
+      followUpStage: 'jump to a high-priority follow-up',
+    });
     expect(nextActionScore(queue[0])).toBeGreaterThan(nextActionScore(queue[1]));
 
     expect(coverage).toMatchObject({
@@ -107,6 +111,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Sales Follow-Up Copilot');
     expect(html).toContain('Tracked leads');
     expect(html).toContain('Queue items');
+    expect(html).toContain('Next action queue');
+    expect(html).toContain('Call or send a high-touch follow-up now');
+    expect(html).toContain('Next step: jump to a high-priority follow-up');
     expect(html).toContain('Manual QA checklist');
     expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');
