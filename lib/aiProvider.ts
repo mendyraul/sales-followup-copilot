@@ -196,13 +196,19 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
     .map((value) => value?.trim())
     .filter((value): value is string => Boolean(value));
 
-  const draftText = candidateTexts[0];
-
-  if (!draftText) {
+  if (candidateTexts.length === 0) {
     throw new Error('OpenAI draft generation returned no output_text payload.');
   }
 
-  return JSON.parse(stripJsonCodeFence(draftText)) as OpenAiDraftPayload;
+  for (const candidateText of candidateTexts) {
+    try {
+      return JSON.parse(stripJsonCodeFence(candidateText)) as OpenAiDraftPayload;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error('OpenAI draft generation returned invalid JSON payload.');
 }
 
 function stripJsonCodeFence(value: string): string {

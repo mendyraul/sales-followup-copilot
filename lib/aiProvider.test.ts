@@ -196,6 +196,40 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('nested output should still drive');
   });
 
+  it('skips malformed candidates when a later structured output contains valid JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: '{not valid json',
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, the second output block still provides the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('second output block');
+  });
+
   it('accepts JSON wrapped in markdown code fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
