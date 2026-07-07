@@ -47,11 +47,14 @@ The dashboard now includes a seeded CSV import preview so operators can verify:
 - duplicate lead emails inside the same file
 - status normalization before database writes
 
+The dashboard also includes a seeded first follow-up draft preview in `mock` mode so operators can review subject/body output and the manual-review checklist without enabling live delivery.
+
 ## Manual QA checklist
 Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoints:
 - [ ] App starts locally (`npm run dev`) without runtime errors.
 - [ ] Lead list/dashboard loads with demo data.
 - [ ] Queue ordering, timeline history, and audit log match the seeded operator flow.
+- [ ] First follow-up draft preview shows mock/manual-safe output plus the review checklist.
 - [ ] CSV preview shows valid rows, blocked rows, and duplicate warnings before import.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
 - [ ] Outbound actions remain blocked unless `SEND_MODE=live` is intentionally enabled.

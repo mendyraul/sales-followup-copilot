@@ -1,4 +1,5 @@
 import {
+  buildMockDraft,
   createAiProvider,
   type AiProviderConfig,
   type DraftGenerationInput,
@@ -20,7 +21,7 @@ export type FirstFollowupDraftResult = DraftGenerationResult & {
   reviewChecklist: string[];
 };
 
-const REVIEW_CHECKLIST = [
+export const FIRST_FOLLOWUP_REVIEW_CHECKLIST = [
   'Confirm the draft reflects the latest lead context before sending.',
   'Verify any requested next step or CTA is accurate and still available.',
   'Keep SEND_MODE=manual until a human explicitly approves outbound delivery.'
@@ -62,6 +63,15 @@ export async function generateFirstFollowupDraft(
 
   return {
     ...draft,
-    reviewChecklist: REVIEW_CHECKLIST
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST
+  };
+}
+
+export function buildDemoFirstFollowupDraft(
+  request: FirstFollowupDraftRequest
+): FirstFollowupDraftResult {
+  return {
+    ...buildMockDraft(buildFirstFollowupInput(request)),
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST
   };
 }

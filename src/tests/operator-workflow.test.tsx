@@ -31,8 +31,8 @@ describe('operator workflow regression', () => {
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
     const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
 
-    expect(queue).toHaveLength(3);
-    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-002', 'lead-demo-001']);
+    expect(queue).toHaveLength(4);
+    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002', 'lead-demo-001']);
     expect(queue[0]).toMatchObject({
       status: 'hot',
     });
@@ -103,6 +103,11 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Manual QA checklist');
     expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');
+    expect(html).toContain('First follow-up draft preview');
+    expect(html).toContain('Draft QA prompts');
+    expect(html).toContain('manual review');
+    expect(html).toContain('mock-provider: deterministic local draft only');
+    expect(html).toContain('Following up with Jordan Lee at Northwind');
     expect(html).toContain('Recent audit log');
     expect(html).toContain('Audit coverage');
     expect(html).toContain('Lead timeline');

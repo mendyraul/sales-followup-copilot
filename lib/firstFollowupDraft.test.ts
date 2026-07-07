@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildFirstFollowupInput, generateFirstFollowupDraft } from './firstFollowupDraft';
+import {
+  buildDemoFirstFollowupDraft,
+  buildFirstFollowupInput,
+  FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+  generateFirstFollowupDraft
+} from './firstFollowupDraft';
 
 describe('buildFirstFollowupInput', () => {
   it('builds a manual-safe default first-followup payload', () => {
@@ -58,10 +63,25 @@ describe('generateFirstFollowupDraft', () => {
     expect(result.subject).toContain('Casey');
     expect(result.body).toContain('sending a concise recap and booking a follow-up');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
-    expect(result.reviewChecklist).toEqual([
-      'Confirm the draft reflects the latest lead context before sending.',
-      'Verify any requested next step or CTA is accurate and still available.',
-      'Keep SEND_MODE=manual until a human explicitly approves outbound delivery.'
-    ]);
+    expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
+  });
+});
+
+describe('buildDemoFirstFollowupDraft', () => {
+  it('builds a seeded manual-safe draft preview without async provider setup', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      companyName: 'Northwind',
+      recentContext: 'Phone call went to voicemail. Next step is a short value-focused email with two proof points.',
+      desiredNextStep: 'sending a concise recap and booking a short review',
+      tone: 'direct'
+    });
+
+    expect(result.provider).toBe('mock');
+    expect(result.subject).toContain('Jordan');
+    expect(result.body).toContain('Phone call went to voicemail');
+    expect(result.body).toContain('sending a concise recap and booking a short review');
+    expect(result.warnings).toContain('mock-provider: deterministic local draft only');
+    expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
   });
 });

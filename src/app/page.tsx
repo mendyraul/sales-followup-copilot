@@ -9,15 +9,14 @@ import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { buildDemoFirstFollowupDraft } from '../../lib/firstFollowupDraft';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 import { listHotLeads } from '../domain/hot-lead';
 import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
-const queue = needsAttention(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
@@ -26,12 +25,22 @@ const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
+const draftPreviewLead = demoLeads.find((lead) => lead.id === 'lead-demo-002') ?? demoLeads[0];
+const draftPreviewNote = notesForLead(demoLeadNotes, draftPreviewLead.id)[0];
+const firstFollowupDraft = buildDemoFirstFollowupDraft({
+  leadName: draftPreviewLead.name,
+  companyName: 'Northwind',
+  recentContext: draftPreviewNote?.body,
+  desiredNextStep: 'sending a concise recap and booking a short review',
+  tone: 'direct'
+});
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
 Avery Smith,avery@example.com,+1-555-0101,Referral,new
 Jordan Lee,jordan@example.com,,Website,contacted
 Pat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot
 Jordan Lee,jordan@example.com,+1-555-0102,,replied
 No Email,,+1-555-0110,Tradeshow,new`);
+const queue = buildQueue(demoLeads);
 const queueGroups = groupQueueByPriority(queue);
 
 const priorityColors = {
@@ -101,8 +110,6 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
 }
 
 export default function HomePage() {
-  const stages = listFollowUpStages();
-
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
       <section>
@@ -161,6 +168,72 @@ export default function HomePage() {
               <li>Lets operators explain what changed for each lead.</li>
               <li>Supports manual QA before any outbound workflow goes live.</li>
               <li>Preserves safety-mode checks in the same visible trail.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.3fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>First follow-up draft preview</h2>
+          <p style={mutedStyle}>
+            A seeded manual-safe draft preview keeps issue `#11` visible in the dashboard without enabling live delivery. Operators can review subject/body/copy guardrails before touching any send mode.
+          </p>
+          <div style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 16, display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <strong>{draftPreviewLead.name}</strong>
+                <div style={mutedStyle}>{draftPreviewLead.status.toUpperCase()} · {draftPreviewLead.email ?? 'no-email'}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span style={pillStyle}>{firstFollowupDraft.provider}</span>
+                <span style={warningPillStyle}>manual review</span>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ ...mutedStyle, marginBottom: 4 }}>Subject</div>
+              <div><strong>{firstFollowupDraft.subject}</strong></div>
+            </div>
+
+            <div>
+              <div style={{ ...mutedStyle, marginBottom: 4 }}>Draft body</div>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: '#f8fafc', borderRadius: 12, padding: 12, border: '1px solid #e2e8f0' }}>
+                {firstFollowupDraft.body}
+              </pre>
+            </div>
+
+            <div>
+              <div style={{ ...mutedStyle, marginBottom: 4 }}>Review checklist</div>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {firstFollowupDraft.reviewChecklist.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ ...mutedStyle }}>
+              <strong>Warning:</strong> {firstFollowupDraft.warnings.join(' · ')}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Draft QA prompts</h2>
+            <ul>
+              <li>Keep the preview in `mock` mode during demos and QA.</li>
+              <li>Confirm the note context carries into the opening sentence.</li>
+              <li>Verify the CTA still matches the requested manual next step.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>Seeded lead: {draftPreviewLead.name}</li>
+              <li>Provider: {firstFollowupDraft.provider}</li>
+              <li>Warnings shown: {firstFollowupDraft.warnings.length}</li>
             </ul>
           </div>
         </div>

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildQueue, groupQueueByPriority, needsAttention, queuePriority } from '../domain/queue';
+import {
+  buildQueue,
+  getNextAction,
+  groupQueueByPriority,
+  needsAttention,
+  nextActionScore,
+  queuePriority
+} from '../domain/queue';
 
 describe('next action queue', () => {
   const now = new Date('2026-06-09T14:00:00.000Z');
