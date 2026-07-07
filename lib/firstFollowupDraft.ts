@@ -41,6 +41,32 @@ export const FIRST_FOLLOWUP_REVIEW_CHECKLIST = [
   'Keep SEND_MODE=manual until a human explicitly approves outbound delivery.'
 ];
 
+export function buildFirstFollowupWarnings(
+  reviewContext: FirstFollowupReviewContext
+): string[] {
+  const warnings: string[] = [];
+
+  if (reviewContext.objectiveSource === 'default') {
+    warnings.push(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
+  }
+
+  if (!reviewContext.contextSources.includes('recentContext')) {
+    warnings.push(
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail'
+    );
+  }
+
+  if (!reviewContext.companyName) {
+    warnings.push(
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be'
+    );
+  }
+
+  return warnings;
+}
+
 export function buildFirstFollowupInput(
   request: FirstFollowupDraftRequest
 ): DraftGenerationInput {
@@ -107,20 +133,26 @@ export async function generateFirstFollowupDraft(
 ): Promise<FirstFollowupDraftResult> {
   const provider = createAiProvider(config);
   const draft = await provider.generateDraft(buildFirstFollowupInput(request));
+  const reviewContext = buildFirstFollowupReviewContext(request);
 
   return {
     ...draft,
+    warnings: [...draft.warnings, ...buildFirstFollowupWarnings(reviewContext)],
     reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
-    reviewContext: buildFirstFollowupReviewContext(request),
+    reviewContext,
   };
 }
 
 export function buildDemoFirstFollowupDraft(
   request: FirstFollowupDraftRequest
 ): FirstFollowupDraftResult {
+  const draft = buildMockDraft(buildFirstFollowupInput(request));
+  const reviewContext = buildFirstFollowupReviewContext(request);
+
   return {
-    ...buildMockDraft(buildFirstFollowupInput(request)),
+    ...draft,
+    warnings: [...draft.warnings, ...buildFirstFollowupWarnings(reviewContext)],
     reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
-    reviewContext: buildFirstFollowupReviewContext(request),
+    reviewContext,
   };
 }

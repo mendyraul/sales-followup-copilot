@@ -3,6 +3,7 @@ import {
   buildDemoFirstFollowupDraft,
   buildFirstFollowupInput,
   buildFirstFollowupReviewContext,
+  buildFirstFollowupWarnings,
   FIRST_FOLLOWUP_REVIEW_CHECKLIST,
   generateFirstFollowupDraft
 } from './firstFollowupDraft';
@@ -64,6 +65,9 @@ describe('generateFirstFollowupDraft', () => {
     expect(result.subject).toContain('Casey');
     expect(result.body).toContain('sending a concise recap and booking a follow-up');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
+    expect(result.warnings).not.toContain(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
     expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
     expect(result.reviewContext).toEqual({
       leadName: 'Casey',
@@ -98,6 +102,23 @@ describe('buildFirstFollowupReviewContext', () => {
   });
 });
 
+describe('buildFirstFollowupWarnings', () => {
+  it('surfaces manual-review warnings when the draft relies on fallback inputs', () => {
+    expect(
+      buildFirstFollowupWarnings(
+        buildFirstFollowupReviewContext({
+          leadName: 'Jordan',
+          leadSource: 'partner intro',
+        })
+      )
+    ).toEqual([
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective',
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail',
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be',
+    ]);
+  });
+});
+
 describe('buildDemoFirstFollowupDraft', () => {
   it('builds a seeded manual-safe draft preview without async provider setup', () => {
     const result = buildDemoFirstFollowupDraft({
@@ -113,8 +134,25 @@ describe('buildDemoFirstFollowupDraft', () => {
     expect(result.body).toContain('Phone call went to voicemail');
     expect(result.body).toContain('sending a concise recap and booking a short review');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
+    expect(result.warnings).not.toContain(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
     expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
     expect(result.reviewContext.contextSources).toEqual(['recentContext']);
     expect(result.reviewContext.missingFields).toEqual(['leadSource']);
+  });
+
+  it('adds fallback warnings when review inputs are missing', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      leadSource: 'partner intro',
+    });
+
+    expect(result.warnings).toEqual([
+      'mock-provider: deterministic local draft only',
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective',
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail',
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be',
+    ]);
   });
 });
