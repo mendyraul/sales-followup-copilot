@@ -216,8 +216,9 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
 }
 
 function stripJsonCodeFence(value: string): string {
-  const fencedMatch = value.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
-  return fencedMatch ? fencedMatch[1].trim() : value;
+  const trimmed = value.trim();
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return fencedMatch ? fencedMatch[1].trim() : trimmed;
 }
 
 function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {

@@ -291,6 +291,35 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('reviewed next step');
   });
 
+  it('accepts fenced JSON even when the model adds a short prose preamble', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the reviewed draft:',
+          '```json',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the fenced JSON should still be extracted after a short preamble.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('fenced JSON should still be extracted');
+  });
+
   it('surfaces upstream OpenAI status failures', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,
