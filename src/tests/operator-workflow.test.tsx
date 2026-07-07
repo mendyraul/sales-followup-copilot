@@ -13,12 +13,12 @@ import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention, nextActionScore } from '../domain/queue';
+import { buildQueue } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
   it('keeps the seeded queue and audit trail aligned for manual QA', () => {
-    const queue = needsAttention(demoLeads);
+    const queue = buildQueue(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
@@ -31,12 +31,12 @@ describe('operator workflow regression', () => {
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
     const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
 
-    expect(queue).toHaveLength(3);
-    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-002', 'lead-demo-001']);
+    expect(queue).toHaveLength(4);
+    expect(queue.map((item) => item.lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002', 'lead-demo-001']);
     expect(queue[0]).toMatchObject({
-      status: 'hot',
+      lead: { status: 'hot' },
     });
-    expect(nextActionScore(queue[0])).toBeGreaterThan(nextActionScore(queue[1]));
+    expect(queue[0].score).toBeGreaterThan(queue[1].score);
 
     expect(coverage).toMatchObject({
       totalEvents: 5,

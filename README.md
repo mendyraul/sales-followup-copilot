@@ -127,6 +127,12 @@ Open `http://localhost:3000`.
 
 ## Launch README / operator playbook
 
+### Launch packet
+- [`docs/environment-variables.md`](docs/environment-variables.md) for the exact runtime contract and manual-safe defaults
+- [`docs/deployment.md`](docs/deployment.md) for deploy/rollback steps and post-deploy smoke checks
+- [`docs/feedback-capture.md`](docs/feedback-capture.md) for collecting structured operator notes after each draft review
+- [`docs/manual-qa.md`](docs/manual-qa.md) for the fuller QA walkthrough beyond the checklist below
+
 ### What this MVP ships
 - queue-first lead review for stale and hot follow-up candidates
 - AI-assisted draft generation that stays human-reviewed by default
@@ -156,6 +162,18 @@ This branch is intended to be demoable and testable without enabling live outbou
 - [ ] Notes, timeline, and audit surfaces render expected context
 - [ ] No live provider is enabled by default
 
+### Fast launch commands
+```bash
+npm ci
+cp .env.example .env
+docker compose up -d db
+npx prisma migrate dev --name init
+npm run db:seed
+npm test -- --run
+npm run build
+npm run dev
+```
+
 ### Recommended launch walk-through
 1. Run the automated checks first:
    ```bash
@@ -184,6 +202,13 @@ This branch is intended to be demoable and testable without enabling live outbou
 - Draft generation seems unavailable: keep `SEND_MODE=manual`, then set `AI_PROVIDER=mock` for local smoke tests so draft review stays manual-safe.
 - `npm run build` fails after schema changes: rerun `npx prisma migrate dev --name init` (or your latest migration) so generated Prisma artifacts match the schema.
 - CSV import rejects rows: compare the file headers with the `CSV lead import` section above before retrying.
+
+### Release evidence to capture
+- Save the exact commit SHA or PR link used for the demo or launch candidate.
+- Record whether the session used seeded leads, imported CSV data, or both.
+- Note the active runtime values for `SEND_MODE`, `AI_PROVIDER`, and `FEEDBACK_CAPTURE_ENABLED`.
+- Capture whether queue ordering, draft review, notes/timeline, audit log, and feedback capture all passed the smoke test.
+- Log any blocker that required operator override instead of leaving it implicit in chat or memory.
 
 ### Operator sign-off notes
 Capture these checkpoints before asking for review or merge:

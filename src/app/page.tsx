@@ -10,14 +10,13 @@ import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 import { listHotLeads } from '../domain/hot-lead';
 import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
-const queue = needsAttention(demoLeads);
+const queue = buildQueue(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
@@ -101,8 +100,6 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
 }
 
 export default function HomePage() {
-  const stages = listFollowUpStages();
-
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
       <section>
