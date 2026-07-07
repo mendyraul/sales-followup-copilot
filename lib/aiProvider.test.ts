@@ -76,6 +76,57 @@ describe('createAiProvider', () => {
     expect(draft.provider).toBe('openai');
     expect(draft.subject).toContain('Jordan');
     expect(draft.body).toContain('next step');
+
+    const [requestUrl, requestInit] = fetchImpl.mock.calls[0];
+    expect(requestUrl).toBe('https://api.openai.com/v1/responses');
+    expect(requestInit).toMatchObject({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-key',
+      },
+    });
+
+    expect(JSON.parse(requestInit.body)).toMatchObject({
+      model: 'gpt-4o-mini',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'sales_followup_draft',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['subject', 'body'],
+          },
+        },
+      },
+    });
+  });
+
+  it('defaults blank model config before building the OpenAI request body', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          subject: 'Quick follow-up for Jordan',
+          body: 'Hi Jordan, just circling back with the next step.'
+        })
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      model: '   ',
+      fetchImpl
+    });
+
+    await provider.generateDraft({ leadName: 'Jordan' });
+
+    const [, requestInit] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(requestInit.body)).toMatchObject({
+      model: 'gpt-4o-mini',
+    });
   });
 
   it('falls back to structured output content when output_text is absent', async () => {
