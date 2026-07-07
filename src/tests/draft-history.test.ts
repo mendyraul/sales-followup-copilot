@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import {
+  createDraft,
+  currentDraftRevision,
+  draftHistory,
+  type FollowUpDraftRecord,
+} from '../../lib/draftWorkflow';
 import { demoDraftHistory } from '../data/demoDraftHistory';
 import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
 
@@ -27,5 +33,42 @@ describe('draft history helpers', () => {
       rejectedThreads: 1,
       latestUpdatedAt: '2026-06-10T07:28:00.000Z',
     });
+  });
+
+  it('stops following malformed supersession cycles instead of looping forever', () => {
+    const first = createDraft({
+      id: 'draft-cycle-001',
+      leadId: 'lead-cycle-001',
+      stage: 'drafted',
+      content: 'Initial draft copy.',
+      now: new Date('2026-06-10T08:00:00.000Z'),
+    });
+
+    const second: FollowUpDraftRecord = {
+      ...first,
+      id: 'draft-cycle-001-v2',
+      version: 2,
+      content: 'Revised draft copy.',
+      createdAt: new Date('2026-06-10T08:05:00.000Z'),
+      updatedAt: new Date('2026-06-10T08:05:00.000Z'),
+      supersedesId: first.id,
+    };
+
+    const malformedRecords: FollowUpDraftRecord[] = [
+      {
+        ...first,
+        supersededById: second.id,
+        supersedesId: second.id,
+      },
+      {
+        ...second,
+        supersededById: first.id,
+      },
+    ];
+
+    expect(currentDraftRevision(malformedRecords, first.id)?.id).toBe(second.id);
+    expect(currentDraftRevision(malformedRecords, second.id)?.id).toBe(first.id);
+    expect(draftHistory(malformedRecords, first.id).map((revision) => revision.id)).toEqual([second.id]);
+    expect(draftHistory(malformedRecords, second.id).map((revision) => revision.id)).toEqual([first.id]);
   });
 });

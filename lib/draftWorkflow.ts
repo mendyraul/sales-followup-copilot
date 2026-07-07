@@ -198,13 +198,15 @@ export function draftHistory(records: FollowUpDraftRecord[], draftId: string): F
   }
 
   const history: FollowUpDraftRecord[] = []
+  const visited = new Set<string>([draftId])
   let cursor: FollowUpDraftRecord | undefined = current
 
   while (cursor?.supersedesId) {
     const previous = byId.get(cursor.supersedesId)
-    if (!previous) {
+    if (!previous || visited.has(previous.id)) {
       break
     }
+    visited.add(previous.id)
     history.push(previous)
     cursor = previous
   }
@@ -215,12 +217,14 @@ export function draftHistory(records: FollowUpDraftRecord[], draftId: string): F
 export function currentDraftRevision(records: FollowUpDraftRecord[], draftId: string): FollowUpDraftRecord | undefined {
   const byId = new Map(records.map((record) => [record.id, record]))
   let cursor = byId.get(draftId)
+  const visited = new Set<string>()
 
   while (cursor?.supersededById) {
     const next = byId.get(cursor.supersededById)
-    if (!next) {
+    if (!next || visited.has(cursor.id) || visited.has(next.id)) {
       break
     }
+    visited.add(cursor.id)
     cursor = next
   }
 
