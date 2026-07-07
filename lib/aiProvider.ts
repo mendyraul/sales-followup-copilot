@@ -202,7 +202,7 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
 
   for (const candidateText of candidateTexts) {
     try {
-      const parsed = JSON.parse(stripJsonCodeFence(candidateText)) as OpenAiDraftPayload;
+      const parsed = JSON.parse(extractJsonCandidate(candidateText)) as OpenAiDraftPayload;
 
       if (hasUsableDraftFields(parsed)) {
         return parsed;
@@ -215,10 +215,22 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
   throw new Error('OpenAI draft generation returned invalid JSON payload.');
 }
 
-function stripJsonCodeFence(value: string): string {
+function extractJsonCandidate(value: string): string {
   const trimmed = value.trim();
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  return fencedMatch ? fencedMatch[1].trim() : trimmed;
+
+  if (fencedMatch) {
+    return fencedMatch[1].trim();
+  }
+
+  const firstBraceIndex = trimmed.indexOf('{');
+  const lastBraceIndex = trimmed.lastIndexOf('}');
+
+  if (firstBraceIndex >= 0 && lastBraceIndex > firstBraceIndex) {
+    return trimmed.slice(firstBraceIndex, lastBraceIndex + 1).trim();
+  }
+
+  return trimmed;
 }
 
 function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
