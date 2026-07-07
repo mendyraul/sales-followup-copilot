@@ -13,12 +13,13 @@ import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention, nextActionScore } from '../domain/queue';
+import { buildQueue, needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
   it('keeps the seeded queue and audit trail aligned for manual QA', () => {
     const queue = needsAttention(demoLeads);
+    const dashboardQueue = buildQueue(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
@@ -38,6 +39,7 @@ describe('operator workflow regression', () => {
       'lead-demo-002',
       'lead-demo-001',
     ]);
+    expect(dashboardQueue.map((item) => item.lead.id)).toEqual(queue.map((lead) => lead.id));
     expect(queue[0]).toMatchObject({
       status: 'hot',
     });
