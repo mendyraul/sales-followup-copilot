@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDemoFirstFollowupDraft,
   buildFirstFollowupInput,
+  buildFirstFollowupReviewContext,
   FIRST_FOLLOWUP_REVIEW_CHECKLIST,
   generateFirstFollowupDraft
 } from './firstFollowupDraft';
@@ -64,6 +65,36 @@ describe('generateFirstFollowupDraft', () => {
     expect(result.body).toContain('sending a concise recap and booking a follow-up');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
     expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
+    expect(result.reviewContext).toEqual({
+      leadName: 'Casey',
+      companyName: 'Acme',
+      recentContext: 'they wanted a recap before sharing it internally',
+      objective: 'sending a concise recap and booking a follow-up',
+      objectiveSource: 'explicit',
+      tone: 'friendly',
+      contextSources: ['recentContext'],
+      missingFields: ['leadSource'],
+    });
+  });
+});
+
+describe('buildFirstFollowupReviewContext', () => {
+  it('flags inferred vs explicit review inputs for manual QA', () => {
+    expect(
+      buildFirstFollowupReviewContext({
+        leadName: 'Jordan',
+        leadSource: 'partner intro',
+      })
+    ).toEqual({
+      leadName: 'Jordan',
+      companyName: undefined,
+      recentContext: 'Lead source: partner intro.',
+      objective: 're-engaging after the first conversation and confirming the best next step',
+      objectiveSource: 'default',
+      tone: 'friendly',
+      contextSources: ['leadSource'],
+      missingFields: ['companyName', 'recentContext', 'desiredNextStep'],
+    });
   });
 });
 
@@ -83,5 +114,7 @@ describe('buildDemoFirstFollowupDraft', () => {
     expect(result.body).toContain('sending a concise recap and booking a short review');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
     expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
+    expect(result.reviewContext.contextSources).toEqual(['recentContext']);
+    expect(result.reviewContext.missingFields).toEqual(['leadSource']);
   });
 });

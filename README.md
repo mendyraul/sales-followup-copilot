@@ -47,14 +47,14 @@ The dashboard now includes a seeded CSV import preview so operators can verify:
 - duplicate lead emails inside the same file
 - status normalization before database writes
 
-The dashboard also includes a seeded first follow-up draft preview in `mock` mode so operators can review subject/body output and the manual-review checklist without enabling live delivery.
+The dashboard also includes a seeded first follow-up draft preview in `mock` mode so operators can review subject/body output, normalized review context, and the manual-review checklist without enabling live delivery.
 
 ## Manual QA checklist
 Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoints:
 - [ ] App starts locally (`npm run dev`) without runtime errors.
 - [ ] Lead list/dashboard loads with demo data.
 - [ ] Queue ordering, timeline history, and audit log match the seeded operator flow.
-- [ ] First follow-up draft preview shows mock/manual-safe output plus the review checklist.
+- [ ] First follow-up draft preview shows mock/manual-safe output, normalized review context, and the review checklist.
 - [ ] CSV preview shows valid rows, blocked rows, and duplicate warnings before import.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
 - [ ] Outbound actions remain blocked unless `SEND_MODE=live` is intentionally enabled.
@@ -289,7 +289,7 @@ GitHub Actions in `.github/workflows/ci.yml` run on pull requests and integratio
 - `lib/firstFollowupDraft.ts` builds the first-touch follow-up payload from lead context, desired next step, and tone.
 - `lib/followupPromptTemplate.ts` centralizes the reusable prompt template so provider adapters keep the same manual-safe constraints and output contract.
 - The helper routes through `lib/aiProvider.ts`, so `AI_PROVIDER=mock` stays the deterministic/manual-safe default for demos and QA.
-- Every generated draft returns a human review checklist before outbound delivery.
+- Every generated draft returns a human review checklist plus normalized review-context metadata before outbound delivery.
 
 ## Environment variables
 - See `.env.example` for the template

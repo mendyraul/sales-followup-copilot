@@ -15,6 +15,7 @@ Use this checklist before demos, branch promotion, or any live-send experiment.
 
 ## Dashboard checks
 - Queue ordering stays `Pat Rivera` -> `Jordan Lee` -> `Avery Smith`.
+- First follow-up draft preview shows tone, objective source, context sources, and any missing review inputs.
 - Audit log shows recent lead/draft/feedback/system events.
 - Timeline cards show a latest note preview and newest-first history.
 - CSV preview shows 4 valid rows, 1 blocked row, and the duplicate `jordan@example.com` warning.

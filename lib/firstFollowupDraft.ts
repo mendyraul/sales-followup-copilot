@@ -7,6 +7,8 @@ import {
 } from './aiProvider';
 
 export type FirstFollowupTone = DraftGenerationInput['tone'];
+export type FirstFollowupContextSource = 'recentContext' | 'leadSource';
+export type FirstFollowupObjectiveSource = 'explicit' | 'default';
 
 export type FirstFollowupDraftRequest = {
   leadName: string;
@@ -17,8 +19,20 @@ export type FirstFollowupDraftRequest = {
   tone?: FirstFollowupTone;
 };
 
+export type FirstFollowupReviewContext = {
+  leadName: string;
+  companyName?: string;
+  recentContext?: string;
+  objective: string;
+  objectiveSource: FirstFollowupObjectiveSource;
+  tone: FirstFollowupTone;
+  contextSources: FirstFollowupContextSource[];
+  missingFields: string[];
+};
+
 export type FirstFollowupDraftResult = DraftGenerationResult & {
   reviewChecklist: string[];
+  reviewContext: FirstFollowupReviewContext;
 };
 
 export const FIRST_FOLLOWUP_REVIEW_CHECKLIST = [
@@ -54,6 +68,39 @@ export function buildFirstFollowupInput(
   };
 }
 
+export function buildFirstFollowupReviewContext(
+  request: FirstFollowupDraftRequest
+): FirstFollowupReviewContext {
+  const input = buildFirstFollowupInput(request);
+  const contextSources: FirstFollowupContextSource[] = [];
+
+  if (request.recentContext?.trim()) {
+    contextSources.push('recentContext');
+  }
+
+  if (request.leadSource?.trim()) {
+    contextSources.push('leadSource');
+  }
+
+  const missingFields = [
+    !input.companyName ? 'companyName' : null,
+    !request.recentContext?.trim() ? 'recentContext' : null,
+    !request.leadSource?.trim() ? 'leadSource' : null,
+    !request.desiredNextStep?.trim() ? 'desiredNextStep' : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    leadName: input.leadName,
+    companyName: input.companyName,
+    recentContext: input.recentContext,
+    objective: input.objective ?? '',
+    objectiveSource: request.desiredNextStep?.trim() ? 'explicit' : 'default',
+    tone: input.tone ?? 'friendly',
+    contextSources,
+    missingFields,
+  };
+}
+
 export async function generateFirstFollowupDraft(
   request: FirstFollowupDraftRequest,
   config: AiProviderConfig
@@ -63,7 +110,8 @@ export async function generateFirstFollowupDraft(
 
   return {
     ...draft,
-    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+    reviewContext: buildFirstFollowupReviewContext(request),
   };
 }
 
@@ -72,6 +120,7 @@ export function buildDemoFirstFollowupDraft(
 ): FirstFollowupDraftResult {
   return {
     ...buildMockDraft(buildFirstFollowupInput(request)),
-    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+    reviewContext: buildFirstFollowupReviewContext(request),
   };
 }

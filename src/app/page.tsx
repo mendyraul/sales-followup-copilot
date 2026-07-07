@@ -212,6 +212,29 @@ export default function HomePage() {
               </ul>
             </div>
 
+            <div>
+              <div style={{ ...mutedStyle, marginBottom: 4 }}>Review context</div>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                <li>Tone: {firstFollowupDraft.reviewContext.tone}</li>
+                <li>
+                  Objective: {firstFollowupDraft.reviewContext.objective}{' '}
+                  <span style={mutedStyle}>({firstFollowupDraft.reviewContext.objectiveSource})</span>
+                </li>
+                <li>
+                  Context sources:{' '}
+                  {firstFollowupDraft.reviewContext.contextSources.length > 0
+                    ? firstFollowupDraft.reviewContext.contextSources.join(', ')
+                    : 'none'}
+                </li>
+                <li>
+                  Missing inputs:{' '}
+                  {firstFollowupDraft.reviewContext.missingFields.length > 0
+                    ? firstFollowupDraft.reviewContext.missingFields.join(', ')
+                    : 'none'}
+                </li>
+              </ul>
+            </div>
+
             <div style={{ ...mutedStyle }}>
               <strong>Warning:</strong> {firstFollowupDraft.warnings.join(' · ')}
             </div>
@@ -234,6 +257,7 @@ export default function HomePage() {
               <li>Seeded lead: {draftPreviewLead.name}</li>
               <li>Provider: {firstFollowupDraft.provider}</li>
               <li>Warnings shown: {firstFollowupDraft.warnings.length}</li>
+              <li>Review context source count: {firstFollowupDraft.reviewContext.contextSources.length}</li>
             </ul>
           </div>
         </div>
