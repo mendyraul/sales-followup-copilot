@@ -320,6 +320,39 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('fenced JSON should still be extracted');
   });
 
+  it('skips an earlier fenced block when a later fenced block contains the valid reviewed draft', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the schema example first:',
+          '```json',
+          '{"subject": "", "body": ""}',
+          '```',
+          'Reviewed draft below:',
+          '```json',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the later fenced block should still provide the reviewed draft.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('later fenced block should still provide');
+  });
+
   it('accepts plain JSON wrapped in short prose without markdown fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

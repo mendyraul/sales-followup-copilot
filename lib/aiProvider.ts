@@ -201,36 +201,46 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
   }
 
   for (const candidateText of candidateTexts) {
-    try {
-      const parsed = JSON.parse(extractJsonCandidate(candidateText)) as OpenAiDraftPayload;
+    for (const jsonCandidate of extractJsonCandidates(candidateText)) {
+      try {
+        const parsed = JSON.parse(jsonCandidate) as OpenAiDraftPayload;
 
-      if (hasUsableDraftFields(parsed)) {
-        return parsed;
+        if (hasUsableDraftFields(parsed)) {
+          return parsed;
+        }
+      } catch {
+        continue;
       }
-    } catch {
-      continue;
     }
   }
 
   throw new Error('OpenAI draft generation returned invalid JSON payload.');
 }
 
-function extractJsonCandidate(value: string): string {
+function extractJsonCandidates(value: string): string[] {
   const trimmed = value.trim();
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const fencedMatches = [...trimmed.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)]
+    .map((match) => match[1]?.trim())
+    .filter((match): match is string => Boolean(match));
 
-  if (fencedMatch) {
-    return fencedMatch[1].trim();
+  if (fencedMatches.length > 0) {
+    return fencedMatches;
   }
+
+  const candidates = [trimmed];
 
   const firstBraceIndex = trimmed.indexOf('{');
   const lastBraceIndex = trimmed.lastIndexOf('}');
 
   if (firstBraceIndex >= 0 && lastBraceIndex > firstBraceIndex) {
-    return trimmed.slice(firstBraceIndex, lastBraceIndex + 1).trim();
+    const braceCandidate = trimmed.slice(firstBraceIndex, lastBraceIndex + 1).trim();
+
+    if (braceCandidate !== trimmed) {
+      candidates.unshift(braceCandidate);
+    }
   }
 
-  return trimmed;
+  return candidates;
 }
 
 function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
