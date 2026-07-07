@@ -202,7 +202,11 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
 
   for (const candidateText of candidateTexts) {
     try {
-      return JSON.parse(stripJsonCodeFence(candidateText)) as OpenAiDraftPayload;
+      const parsed = JSON.parse(stripJsonCodeFence(candidateText)) as OpenAiDraftPayload;
+
+      if (hasUsableDraftFields(parsed)) {
+        return parsed;
+      }
     } catch {
       continue;
     }
@@ -214,6 +218,10 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
 function stripJsonCodeFence(value: string): string {
   const fencedMatch = value.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
   return fencedMatch ? fencedMatch[1].trim() : value;
+}
+
+function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
+  return Boolean(payload.subject?.trim() && payload.body?.trim());
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
