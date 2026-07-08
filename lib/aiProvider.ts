@@ -223,11 +223,17 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
 
 function extractJsonCandidates(value: string): string[] {
   const trimmed = value.trim();
-  const fencedMatches = [...trimmed.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)]
+  const fencedBlockPattern = /```(?:json)?\s*([\s\S]*?)```/gi;
+  const fencedMatches = [...trimmed.matchAll(fencedBlockPattern)]
     .map((match) => match[1]?.trim())
     .filter((match): match is string => Boolean(match));
+  const textOutsideFences = trimmed.replace(fencedBlockPattern, ' ').trim();
 
-  const candidates = [trimmed, ...extractBalancedJsonObjects(trimmed)];
+  const candidates = [
+    trimmed,
+    ...extractBalancedJsonObjects(trimmed),
+    ...extractBalancedJsonObjects(textOutsideFences)
+  ];
 
   return [...fencedMatches, ...candidates.filter((candidate) => !fencedMatches.includes(candidate))];
 }

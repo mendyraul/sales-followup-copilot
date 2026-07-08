@@ -444,6 +444,37 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('keep scanning after the fenced example');
   });
 
+  it('falls back to later plain JSON when an earlier fenced example contains unmatched JSON braces', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          '```json',
+          '{"subject":"example"',
+          '```',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should recover even after a broken fenced JSON example.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('recover even after a broken fenced JSON example');
+  });
+
   it('parses plain JSON wrapped in prose when the draft body contains braces and quoted snippets', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
