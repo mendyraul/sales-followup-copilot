@@ -193,7 +193,8 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
           .map((entry) => entry.text as string)
       )
     )
-    .map((value) => value?.trim())
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
     .filter((value): value is string => Boolean(value));
 
   if (candidateTexts.length === 0) {

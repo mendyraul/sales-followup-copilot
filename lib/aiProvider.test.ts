@@ -412,6 +412,40 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('keep scanning after the fenced example');
   });
 
+  it('ignores malformed non-string top-level output_text values when later structured content is valid', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: { text: 'not a usable string payload' },
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, nested structured output should still recover the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('nested structured output should still recover');
+  });
+
   it('surfaces upstream OpenAI status failures', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,
