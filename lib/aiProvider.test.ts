@@ -505,6 +505,35 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('"next best step"');
   });
 
+  it('recovers when a malformed plain-JSON example leaves the earlier string unterminated before a later valid draft', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Bad schema example first:',
+          '{"subject":"example","body":"missing the closing quote before the brace}',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should recover even after a malformed plain JSON example earlier in the response.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('recover even after a malformed plain JSON example');
+  });
+
   it('ignores malformed non-string top-level output_text values when later structured content is valid', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

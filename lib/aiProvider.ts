@@ -240,48 +240,52 @@ function extractJsonCandidates(value: string): string[] {
 
 function extractBalancedJsonObjects(value: string): string[] {
   const matches: string[] = [];
-  let startIndex = -1;
-  let depth = 0;
-  let inString = false;
-  let escaping = false;
+  for (let searchIndex = 0; searchIndex < value.length; searchIndex += 1) {
+    const startIndex = value.indexOf('{', searchIndex);
 
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-
-    if (escaping) {
-      escaping = false;
-      continue;
+    if (startIndex === -1) {
+      break;
     }
 
-    if (character === '\\' && inString) {
-      escaping = true;
-      continue;
-    }
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
 
-    if (character === '"') {
-      inString = !inString;
-      continue;
-    }
+    for (let index = startIndex; index < value.length; index += 1) {
+      const character = value[index];
 
-    if (inString) {
-      continue;
-    }
-
-    if (character === '{') {
-      if (depth === 0) {
-        startIndex = index;
+      if (escaping) {
+        escaping = false;
+        continue;
       }
 
-      depth += 1;
-      continue;
-    }
+      if (character === '\\' && inString) {
+        escaping = true;
+        continue;
+      }
 
-    if (character === '}' && depth > 0) {
-      depth -= 1;
+      if (character === '"') {
+        inString = !inString;
+        continue;
+      }
 
-      if (depth === 0 && startIndex >= 0) {
-        matches.push(value.slice(startIndex, index + 1).trim());
-        startIndex = -1;
+      if (inString) {
+        continue;
+      }
+
+      if (character === '{') {
+        depth += 1;
+        continue;
+      }
+
+      if (character === '}' && depth > 0) {
+        depth -= 1;
+
+        if (depth === 0) {
+          matches.push(value.slice(startIndex, index + 1).trim());
+          searchIndex = index;
+          break;
+        }
       }
     }
   }
