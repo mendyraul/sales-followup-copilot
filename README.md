@@ -210,6 +210,35 @@ npm run dev
 - Capture whether queue ordering, draft review, notes/timeline, audit log, and feedback capture all passed the smoke test.
 - Log any blocker that required operator override instead of leaving it implicit in chat or memory.
 
+### Pilot session script
+1. Confirm the environment is still manual-safe before sharing the screen:
+   - `SEND_MODE=manual`
+   - `AI_PROVIDER=mock` unless a reviewed real-provider dry run is intentional
+2. Walk one lead from queue selection through draft review:
+   - explain why the lead appears where it does
+   - show the timeline and notes context
+   - generate a draft, then edit or reject it as a human operator
+3. Capture structured feedback immediately after the review so the next pass has concrete operator notes.
+4. End by logging what passed, what felt awkward, and which follow-up issue should be filed before beta rollout.
+
+### Launch stop / no-go triggers
+- Stop the session if `SEND_MODE=live` appears unexpectedly or cannot be explained.
+- Stop if queue ordering or lead context looks inconsistent with the seeded/imported data.
+- Stop if draft review actions do not produce matching audit or timeline evidence.
+- Stop if the operator needs to bypass the documented setup flow just to reach the happy path.
+
+### Handoff template
+Use this as the minimum launch or demo handoff note:
+
+```md
+- Candidate: <commit sha or PR>
+- Lead data source: <seeded | imported CSV | both>
+- Runtime: SEND_MODE=<value>, AI_PROVIDER=<value>, FEEDBACK_CAPTURE_ENABLED=<value>
+- Validated flow: <queue review -> notes/timeline -> draft review -> feedback capture>
+- Result: <go | no-go>
+- Follow-ups: <issues or blockers>
+```
+
 ### Operator sign-off notes
 Capture these checkpoints before asking for review or merge:
 - which demo path you validated (seeded data, imported CSV, or both)
