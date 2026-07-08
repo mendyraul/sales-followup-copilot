@@ -328,6 +328,38 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('ignore placeholder schema values');
   });
 
+  it('skips candidates when either required field is still a schema placeholder token', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          JSON.stringify({
+            subject: 'string',
+            body: 'Hi Jordan, this example body should not be accepted as the reviewed draft.'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should keep scanning until both required fields contain real reviewed text.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('both required fields contain real reviewed text');
+  });
+
   it('accepts JSON wrapped in markdown code fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

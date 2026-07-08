@@ -314,7 +314,7 @@ function looksLikePlaceholderDraft(payload: OpenAiDraftPayload): boolean {
     'body'
   ]);
 
-  return placeholderValues.has(subject) && placeholderValues.has(body);
+  return placeholderValues.has(subject) || placeholderValues.has(body);
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
