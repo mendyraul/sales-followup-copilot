@@ -314,7 +314,21 @@ function looksLikePlaceholderDraft(payload: OpenAiDraftPayload): boolean {
     'body'
   ]);
 
-  return placeholderValues.has(subject) || placeholderValues.has(body);
+  return (
+    looksLikePlaceholderFieldValue(subject, placeholderValues) ||
+    looksLikePlaceholderFieldValue(body, placeholderValues)
+  );
+}
+
+function looksLikePlaceholderFieldValue(
+  value: string,
+  placeholderValues: ReadonlySet<string>
+): boolean {
+  return (
+    placeholderValues.has(value) ||
+    /^<[^>]+>$/.test(value) ||
+    /^\{\{[^}]+\}\}$/.test(value)
+  );
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {

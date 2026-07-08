@@ -360,6 +360,70 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('both required fields contain real reviewed text');
   });
 
+  it('skips angle-bracket placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '<subject line>',
+            body: '<body copy>'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore angle-bracket template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore angle-bracket template placeholders');
+  });
+
+  it('skips moustache placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '{{subject}}',
+            body: '{{body}}'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore moustache template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore moustache template placeholders');
+  });
+
   it('accepts JSON wrapped in markdown code fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
