@@ -35,6 +35,41 @@ describe('buildFirstFollowupInput', () => {
     });
   });
 
+  it('falls back to the default objective when desired next step trims blank', () => {
+    expect(
+      buildFirstFollowupInput({
+        leadName: ' Jordan ',
+        companyName: '   ',
+        recentContext: '   ',
+        leadSource: ' partner referral ',
+        desiredNextStep: '   '
+      })
+    ).toEqual({
+      leadName: 'Jordan',
+      companyName: undefined,
+      recentContext: 'Lead source: partner referral.',
+      objective: 're-engaging after the first conversation and confirming the best next step',
+      tone: 'friendly'
+    });
+  });
+
+  it('keeps trimmed recent context without adding extra whitespace when no lead source exists', () => {
+    expect(
+      buildFirstFollowupInput({
+        leadName: 'Morgan',
+        recentContext: '  asked for a concise recap before the next call  ',
+        leadSource: '   ',
+        tone: 'direct'
+      })
+    ).toEqual({
+      leadName: 'Morgan',
+      companyName: undefined,
+      recentContext: 'asked for a concise recap before the next call',
+      objective: 're-engaging after the first conversation and confirming the best next step',
+      tone: 'direct'
+    });
+  });
+
   it('rejects blank lead names', () => {
     expect(() => buildFirstFollowupInput({ leadName: '   ' })).toThrow(
       'leadName is required to generate a first follow-up draft.'
