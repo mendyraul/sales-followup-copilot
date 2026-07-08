@@ -223,24 +223,60 @@ function extractJsonCandidates(value: string): string[] {
     .map((match) => match[1]?.trim())
     .filter((match): match is string => Boolean(match));
 
-  if (fencedMatches.length > 0) {
-    return fencedMatches;
-  }
+  const candidates = [trimmed, ...extractBalancedJsonObjects(trimmed)];
 
-  const candidates = [trimmed];
+  return [...fencedMatches, ...candidates.filter((candidate) => !fencedMatches.includes(candidate))];
+}
 
-  const firstBraceIndex = trimmed.indexOf('{');
-  const lastBraceIndex = trimmed.lastIndexOf('}');
+function extractBalancedJsonObjects(value: string): string[] {
+  const matches: string[] = [];
+  let startIndex = -1;
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
 
-  if (firstBraceIndex >= 0 && lastBraceIndex > firstBraceIndex) {
-    const braceCandidate = trimmed.slice(firstBraceIndex, lastBraceIndex + 1).trim();
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
 
-    if (braceCandidate !== trimmed) {
-      candidates.unshift(braceCandidate);
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+
+    if (character === '\\' && inString) {
+      escaping = true;
+      continue;
+    }
+
+    if (character === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (character === '{') {
+      if (depth === 0) {
+        startIndex = index;
+      }
+
+      depth += 1;
+      continue;
+    }
+
+    if (character === '}' && depth > 0) {
+      depth -= 1;
+
+      if (depth === 0 && startIndex >= 0) {
+        matches.push(value.slice(startIndex, index + 1).trim());
+        startIndex = -1;
+      }
     }
   }
 
-  return candidates;
+  return matches.filter(Boolean);
 }
 
 function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
