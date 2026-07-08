@@ -162,6 +162,38 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('next safe step');
   });
 
+  it('accepts nested structured output when the content text is present but the type field is omitted', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, this reviewed draft should still parse even without a content type.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('without a content type');
+  });
+
   it('falls back to structured output content when top-level output_text is only whitespace', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

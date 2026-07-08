@@ -189,7 +189,10 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
     .concat(
       (payload.output ?? []).flatMap((item) =>
         (item.content ?? [])
-          .filter((entry) => entry.type === 'output_text' && typeof entry.text === 'string')
+          .filter(
+            (entry) =>
+              typeof entry.text === 'string' && (entry.type === 'output_text' || entry.type == null)
+          )
           .map((entry) => entry.text as string)
       )
     )
