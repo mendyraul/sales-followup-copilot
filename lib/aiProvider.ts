@@ -209,7 +209,7 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
       try {
         const parsed = JSON.parse(jsonCandidate) as OpenAiDraftPayload;
 
-        if (hasUsableDraftFields(parsed)) {
+        if (hasUsableDraftFields(parsed) && !looksLikePlaceholderDraft(parsed)) {
           return parsed;
         }
       } catch {
@@ -295,6 +295,26 @@ function extractBalancedJsonObjects(value: string): string[] {
 
 function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
   return Boolean(payload.subject?.trim() && payload.body?.trim());
+}
+
+function looksLikePlaceholderDraft(payload: OpenAiDraftPayload): boolean {
+  const subject = payload.subject?.trim().toLowerCase();
+  const body = payload.body?.trim().toLowerCase();
+
+  if (!subject || !body) {
+    return false;
+  }
+
+  const placeholderValues = new Set([
+    'string',
+    '<string>',
+    '<subject>',
+    '<body>',
+    'subject',
+    'body'
+  ]);
+
+  return placeholderValues.has(subject) && placeholderValues.has(body);
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
