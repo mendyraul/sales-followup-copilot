@@ -412,6 +412,36 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('keep scanning after the fenced example');
   });
 
+  it('parses plain JSON wrapped in prose when the draft body contains braces and quoted snippets', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Use this reviewed draft:',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body:
+              'Hi Jordan, you mentioned the internal note `{"owner":"ops"}` and asked for the exact phrase "next best step" in the recap.'
+          }),
+          'Keep the tone consultative.'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('{"owner":"ops"}');
+    expect(draft.body).toContain('"next best step"');
+  });
+
   it('ignores malformed non-string top-level output_text values when later structured content is valid', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
