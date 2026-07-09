@@ -27,4 +27,4 @@ Manual-safe feedback capture for QA and product iteration.
 9. Use the dashboard action hints to decide whether each open note needs a copy revision, a reproducible bug check, or a simple operator confirmation before the next demo.
 10. Treat aged unresolved notes as escalation candidates so reviewers can separate fresh feedback from overdue demo blockers.
 11. Use the escalation snapshot to spot how many notes are urgent, which ones can stay in watch mode, and how old the oldest open review item is.
-
+12. Start from the dashboard's feedback intake templates when a reviewer needs a structured capture payload; the cards prefill lead linkage, queue priority, score guidance, and metadata hints for the next manual QA pass.

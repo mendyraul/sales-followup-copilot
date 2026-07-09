@@ -8,22 +8,21 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { buildFeedbackCaptureDrafts, feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention } from '../domain/queue';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
-import { listHotLeads } from '../domain/hot-lead';
-import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
+import { buildQueue } from '../domain/queue';
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
-const queue = needsAttention(demoLeads);
+const queue = buildQueue(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
 const latestFeedback = recentFeedback(demoFeedbackEntries);
 const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
+const feedbackCaptureDrafts = buildFeedbackCaptureDrafts(queue, demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
@@ -32,37 +31,6 @@ Jordan Lee,jordan@example.com,,Website,contacted
 Pat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot
 Jordan Lee,jordan@example.com,+1-555-0102,,replied
 No Email,,+1-555-0110,Tradeshow,new`);
-const queueGroups = groupQueueByPriority(queue);
-
-const priorityColors = {
-  high: '#b91c1c',
-  medium: '#b45309',
-  low: '#1d4ed8',
-} as const;
-
-const prioritySurface = {
-  high: { border: '#fecaca', background: '#fef2f2', text: '#991b1b' },
-  medium: { border: '#fde68a', background: '#fffbeb', text: '#92400e' },
-  low: { border: '#bfdbfe', background: '#eff6ff', text: '#1d4ed8' },
-} as const;
-
-const laneCopy: Record<QueuePriority, { title: string; subtitle: string; empty: string }> = {
-  high: {
-    title: 'Act now',
-    subtitle: 'Hot or replied leads that need the fastest human follow-up.',
-    empty: 'No urgent leads right now.',
-  },
-  medium: {
-    title: 'Queue next',
-    subtitle: 'Leads that have momentum but can wait behind the urgent lane.',
-    empty: 'No medium-priority leads waiting.',
-  },
-  low: {
-    title: 'Warm up',
-    subtitle: 'Newer opportunities that still need a first touch or light triage.',
-    empty: 'No low-priority leads to warm up.',
-  },
-};
 
 function formatAge(ageHours: number) {
   if (ageHours >= 24) {
@@ -74,35 +42,7 @@ function formatAge(ageHours: number) {
   return `${Math.round(ageHours)}h ago`;
 }
 
-function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof queue)[number] }) {
-  return (
-    <article style={{ background: 'white', padding: 16, borderRadius: 12, border: '1px solid #e5e7eb' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-        <div>
-          <h3 style={{ margin: '0 0 4px 0' }}>{item.lead.name}</h3>
-          <div style={{ color: '#6b7280' }}>{item.lead.email ?? 'No email on file'}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ padding: '4px 10px', borderRadius: 999, background: priorityColors[priority], color: 'white', fontSize: 12, textTransform: 'uppercase' }}>
-            {priority}
-          </span>
-          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#e5e7eb', fontSize: 12, textTransform: 'capitalize' }}>
-            {item.lead.status}
-          </span>
-        </div>
-      </div>
-      <p style={{ margin: '0 0 10px 0', color: '#374151' }}>{item.reason}</p>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 14 }}>
-        <span>Priority score: {Math.round(item.score)}</span>
-        <span>Last activity: {formatAge(item.ageHours)}</span>
-      </div>
-    </article>
-  );
-}
-
 export default function HomePage() {
-  const stages = listFollowUpStages();
-
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
       <section>
@@ -267,6 +207,86 @@ export default function HomePage() {
               <li>Checklist doc: <code>docs/manual-qa.md</code></li>
               <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Feedback intake templates</h2>
+          <p style={mutedStyle}>
+            A manual-safe capture starter for the next three leads in the queue so reviewers can log structured feedback without inventing the payload from scratch.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {feedbackCaptureDrafts.map((draft) => (
+              <li key={draft.leadId} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{draft.leadName}</strong>
+                    <div style={{ ...mutedStyle, marginTop: 4 }}>
+                      {draft.suggestedCategory.replace('_', ' ')} · {draft.source} · score {draft.suggestedScore}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={draft.priority === 'high' ? warningPillStyle : pillStyle}>{draft.priority}</span>
+                    <span style={draft.suggestedSentiment === 'negative' ? warningPillStyle : miniPillStyle}>{draft.suggestedSentiment}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture prompt</div>
+                  <div>{draft.prompt}</div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Metadata preview</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Object.entries(draft.metadataPreview).map(([key, value]) => (
+                      <span key={key} style={miniPillStyle}>{key}: {String(value)}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture checklist</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {draft.checklist.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Capture rules</h2>
+            <ul>
+              <li>Stick to `category`, `sentiment`, `message`, and optional 1-5 `score`.</li>
+              <li>Always link the note back to a lead when the workflow context is known.</li>
+              <li>Keep `SEND_MODE=manual` and treat feedback as review input, not automation permission.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>Suggested intake cards: {feedbackCaptureDrafts.length}</li>
+              <li>Highest-priority lead: {feedbackCaptureDrafts[0]?.leadName ?? 'n/a'}</li>
+              <li>Open feedback linked to those cards: {feedbackCaptureDrafts.reduce((sum, draft) => sum + draft.openFeedbackCount, 0)}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Runbook</h2>
+            <ul>
+              <li>Docs: <code>docs/feedback-capture.md</code></li>
+              <li>Source helpers: <code>src/domain/feedback.ts</code></li>
+              <li>Log enough metadata to recreate the queue context during QA review.</li>
             </ul>
           </div>
         </div>

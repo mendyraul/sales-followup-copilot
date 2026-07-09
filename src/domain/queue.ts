@@ -99,6 +99,7 @@ export type QueueItem = {
   priority: QueuePriority;
   ageHours: number;
   reason: string;
+  nextAction: NextAction;
 };
 
 export type QueueGroups = Record<QueuePriority, QueueItem[]>;
@@ -116,9 +117,11 @@ export function nextActionScore(lead: Lead, now = new Date()): number {
 
 export function needsAttention(leads: Lead[], now = new Date()): Array<Lead & { nextAction: NextAction }> {
   return [...leads]
-    .filter((lead) => ['new', 'contacted', 'replied', 'hot'].includes(lead.status))
+    .filter((lead) => isActiveStatus(lead.status))
     .map((lead) => ({ ...lead, nextAction: getNextAction(lead, now) }))
     .sort((a, b) => b.nextAction.score - a.nextAction.score);
+}
+
 export function queuePriority(score: number): QueuePriority {
   if (score >= 100) return 'high';
   if (score >= 50) return 'medium';
@@ -147,14 +150,15 @@ export function buildQueue(leads: Lead[], now = new Date()): QueueItem[] {
     .map((lead) => {
       const updated = new Date(lead.updatedAt).getTime();
       const ageHours = Math.max(0, (now.getTime() - updated) / 3600000);
-      const score = nextActionScore(lead, now);
+      const nextAction = getNextAction(lead, now);
 
       return {
         lead,
-        score,
-        priority: queuePriority(score),
+        score: nextAction.score,
+        priority: queuePriority(nextAction.score),
         ageHours,
         reason: queueReason(lead, ageHours),
+        nextAction,
       } satisfies QueueItem;
     })
     .sort((a, b) => b.score - a.score);
@@ -168,8 +172,4 @@ export function groupQueueByPriority(queue: QueueItem[]): QueueGroups {
     },
     { high: [], medium: [], low: [] }
   );
-}
-
-export function needsAttention(leads: Lead[], now = new Date()): Lead[] {
-  return buildQueue(leads, now).map((item) => item.lead);
 }

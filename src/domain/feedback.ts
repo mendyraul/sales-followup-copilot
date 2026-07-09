@@ -1,3 +1,5 @@
+import type { QueueItem } from './queue';
+
 export type FeedbackCategory = 'ux' | 'bug' | 'result_quality' | 'other';
 export type FeedbackSentiment = 'positive' | 'neutral' | 'negative';
 
@@ -120,6 +122,20 @@ export type FeedbackEscalationSummary = {
   oldestOpenAt: string | null;
 };
 
+export type FeedbackCaptureDraft = {
+  leadId: string;
+  leadName: string;
+  priority: QueueItem['priority'];
+  suggestedCategory: FeedbackCategory;
+  suggestedSentiment: FeedbackSentiment;
+  suggestedScore: number;
+  source: NonNullable<FeedbackInput['source']>;
+  prompt: string;
+  metadataPreview: Record<string, string | number | boolean>;
+  checklist: string[];
+  openFeedbackCount: number;
+};
+
 export function feedbackEscalation(record: FeedbackRecord, now = new Date()): FeedbackEscalation {
   if (record.resolved) {
     return 'resolved';
@@ -137,6 +153,79 @@ export function feedbackEscalation(record: FeedbackRecord, now = new Date()): Fe
   }
 
   return ageHours >= 72 ? 'watch' : 'fresh';
+}
+
+function feedbackDefaultsForQueueItem(item: QueueItem, latest?: FeedbackRecord) {
+  if (latest) {
+    return {
+      suggestedCategory: latest.category,
+      suggestedSentiment: latest.resolved ? 'neutral' : latest.sentiment,
+      suggestedScore: latest.score ?? (latest.resolved ? 4 : 3),
+    } satisfies Pick<FeedbackCaptureDraft, 'suggestedCategory' | 'suggestedSentiment' | 'suggestedScore'>;
+  }
+
+  if (item.priority === 'high') {
+    return {
+      suggestedCategory: item.lead.status === 'hot' ? 'result_quality' : 'bug',
+      suggestedSentiment: 'negative',
+      suggestedScore: 2,
+    } satisfies Pick<FeedbackCaptureDraft, 'suggestedCategory' | 'suggestedSentiment' | 'suggestedScore'>;
+  }
+
+  if (item.priority === 'medium') {
+    return {
+      suggestedCategory: 'result_quality',
+      suggestedSentiment: 'neutral',
+      suggestedScore: 3,
+    } satisfies Pick<FeedbackCaptureDraft, 'suggestedCategory' | 'suggestedSentiment' | 'suggestedScore'>;
+  }
+
+  return {
+    suggestedCategory: 'ux',
+    suggestedSentiment: 'positive',
+    suggestedScore: 4,
+  } satisfies Pick<FeedbackCaptureDraft, 'suggestedCategory' | 'suggestedSentiment' | 'suggestedScore'>;
+}
+
+export function buildFeedbackCaptureDrafts(queue: QueueItem[], records: FeedbackRecord[], limit = 3): FeedbackCaptureDraft[] {
+  return queue.slice(0, limit).map((item) => {
+    const linkedEntries = records
+      .filter((record) => record.leadId === item.lead.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const latest = linkedEntries[0];
+    const openFeedbackCount = linkedEntries.filter((record) => !record.resolved).length;
+    const defaults = feedbackDefaultsForQueueItem(item, latest);
+    const prompt = latest && !latest.resolved
+      ? `Confirm whether the latest ${latest.category.replace('_', ' ')} note for ${item.lead.name} is resolved before the next ${item.nextAction.followUpStage}.`
+      : `Capture what helped or blocked ${item.lead.name} before the next ${item.nextAction.followUpStage}.`;
+
+    return {
+      leadId: item.lead.id,
+      leadName: item.lead.name,
+      priority: item.priority,
+      source: 'in_app',
+      prompt,
+      metadataPreview: {
+        leadStatus: item.lead.status,
+        queuePriority: item.priority,
+        nextActionBand: item.nextAction.band,
+        waitHours: Math.round(item.ageHours),
+        openFeedbackCount,
+        latestReviewer: latest?.reviewer ?? 'none',
+      },
+      checklist: [
+        latest && !latest.resolved
+          ? `Review the open ${latest.category.replace('_', ' ')} note from ${latest.reviewer} before logging a new result.`
+          : `Link the note to ${item.lead.name} so the next reviewer can reconstruct the context without leaving the dashboard.`,
+        `Capture the queue priority (${item.priority}) and next-action band (${item.nextAction.band}) in metadata for auditability.`,
+        item.priority === 'high'
+          ? 'If the next score stays 2 or below, escalate to a human owner before another draft is queued.'
+          : 'Close the loop manually once the reviewer confirms the note is resolved.',
+      ],
+      openFeedbackCount,
+      ...defaults,
+    };
+  });
 }
 
 export function summarizeFeedbackEscalations(records: FeedbackRecord[], now = new Date()): FeedbackEscalationSummary {
@@ -272,4 +361,3 @@ export function feedbackNeedsAttention(records: FeedbackRecord[]) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 }
-

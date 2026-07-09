@@ -11,9 +11,9 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
+import { buildFeedbackCaptureDrafts, feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention, nextActionScore } from '../domain/queue';
+import { buildQueue, needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
@@ -26,13 +26,14 @@ describe('operator workflow regression', () => {
     const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
     const latestFeedback = recentFeedback(demoFeedbackEntries);
     const hotspots = feedbackHotspots(demoFeedbackEntries);
+    const captureDrafts = buildFeedbackCaptureDrafts(buildQueue(demoLeads), demoFeedbackEntries);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
     const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
 
-    expect(queue).toHaveLength(3);
-    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-002', 'lead-demo-001']);
+    expect(queue).toHaveLength(4);
+    expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002', 'lead-demo-001']);
     expect(queue[0]).toMatchObject({
       status: 'hot',
     });
@@ -82,6 +83,12 @@ describe('operator workflow regression', () => {
       negativeEntries: 1,
       latestAt: '2026-06-10T07:32:00.000Z',
     });
+    expect(captureDrafts[0]).toMatchObject({
+      leadId: 'lead-demo-003',
+      priority: 'high',
+      openFeedbackCount: 1,
+    });
+    expect(captureDrafts[0].checklist[0]).toContain('open result quality note');
 
     expect(timelineSummary).toMatchObject({
       totalEvents: 5,
@@ -111,12 +118,16 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Release summary');
     expect(html).toContain('Deploy checkpoints');
     expect(html).toContain('Feedback capture inbox');
+    expect(html).toContain('Feedback intake templates');
+    expect(html).toContain('Capture checklist');
+    expect(html).toContain('Capture rules');
     expect(html).toContain('Feedback hotspots');
     expect(html).toContain('Repeat issue watchlist');
     expect(html).toContain('Action hint:');
     expect(html).toContain('Next step:');
     expect(html).toContain('Triage state:');
     expect(html).toContain('urgent');
+    expect(html).toContain('queuePriority: high');
     expect(html).toContain('Feedback summary');
     expect(html).toContain('Feedback entries');
     expect(html).toContain('Open items');
