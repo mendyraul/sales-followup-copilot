@@ -177,7 +177,41 @@ describe('feedback normalization', () => {
         latestReviewer: 'qa-reviewer',
       },
     });
-    expect(drafts[0].prompt).toContain('latest result quality note');
+    expect(drafts[0].prompt).toContain('latest open result quality note');
     expect(drafts[0].checklist[1]).toContain('queue priority (high)');
+  });
+
+  it('prefers the latest unresolved note when newer resolved feedback exists', () => {
+    const mixedResolutionEntries = [
+      ...demoFeedbackEntries,
+      {
+        ...demoFeedbackEntries[0],
+        id: 'feedback-demo-004',
+        createdAt: '2026-06-10T08:30:00.000Z',
+        reviewer: 'ops-reviewer',
+        resolved: true,
+        sentiment: 'positive' as const,
+        score: 4,
+        message: 'Follow-up copy looked good after the retry.',
+      },
+    ];
+
+    const drafts = buildFeedbackCaptureDrafts(
+      buildQueue(demoLeads, new Date('2026-06-10T12:00:00.000Z')),
+      mixedResolutionEntries
+    );
+
+    expect(drafts[0]).toMatchObject({
+      leadId: 'lead-demo-003',
+      suggestedCategory: 'result_quality',
+      suggestedSentiment: 'neutral',
+      suggestedScore: 3,
+      metadataPreview: {
+        latestReviewer: 'qa-reviewer',
+        openFeedbackCount: 1,
+      },
+    });
+    expect(drafts[0].prompt).toContain('latest open result quality note');
+    expect(drafts[0].checklist[0]).toContain('open result quality note from qa-reviewer');
   });
 });

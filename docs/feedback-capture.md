@@ -28,3 +28,4 @@ Manual-safe feedback capture for QA and product iteration.
 10. Treat aged unresolved notes as escalation candidates so reviewers can separate fresh feedback from overdue demo blockers.
 11. Use the escalation snapshot to spot how many notes are urgent, which ones can stay in watch mode, and how old the oldest open review item is.
 12. Start from the dashboard's feedback intake templates when a reviewer needs a structured capture payload; the cards prefill lead linkage, queue priority, score guidance, and metadata hints for the next manual QA pass.
+13. If a lead has both resolved and unresolved notes, the intake template should stay anchored to the newest unresolved note so reviewers do not accidentally close the wrong loop.

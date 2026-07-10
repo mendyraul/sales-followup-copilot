@@ -193,10 +193,12 @@ export function buildFeedbackCaptureDrafts(queue: QueueItem[], records: Feedback
       .filter((record) => record.leadId === item.lead.id)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const latest = linkedEntries[0];
+    const latestOpen = linkedEntries.find((record) => !record.resolved);
     const openFeedbackCount = linkedEntries.filter((record) => !record.resolved).length;
-    const defaults = feedbackDefaultsForQueueItem(item, latest);
-    const prompt = latest && !latest.resolved
-      ? `Confirm whether the latest ${latest.category.replace('_', ' ')} note for ${item.lead.name} is resolved before the next ${item.nextAction.followUpStage}.`
+    const contextRecord = latestOpen ?? latest;
+    const defaults = feedbackDefaultsForQueueItem(item, contextRecord);
+    const prompt = latestOpen
+      ? `Confirm whether the latest open ${latestOpen.category.replace('_', ' ')} note for ${item.lead.name} is resolved before the next ${item.nextAction.followUpStage}.`
       : `Capture what helped or blocked ${item.lead.name} before the next ${item.nextAction.followUpStage}.`;
 
     return {
@@ -211,11 +213,11 @@ export function buildFeedbackCaptureDrafts(queue: QueueItem[], records: Feedback
         nextActionBand: item.nextAction.band,
         waitHours: Math.round(item.ageHours),
         openFeedbackCount,
-        latestReviewer: latest?.reviewer ?? 'none',
+        latestReviewer: contextRecord?.reviewer ?? 'none',
       },
       checklist: [
-        latest && !latest.resolved
-          ? `Review the open ${latest.category.replace('_', ' ')} note from ${latest.reviewer} before logging a new result.`
+        latestOpen
+          ? `Review the open ${latestOpen.category.replace('_', ' ')} note from ${latestOpen.reviewer} before logging a new result.`
           : `Link the note to ${item.lead.name} so the next reviewer can reconstruct the context without leaving the dashboard.`,
         `Capture the queue priority (${item.priority}) and next-action band (${item.nextAction.band}) in metadata for auditability.`,
         item.priority === 'high'
