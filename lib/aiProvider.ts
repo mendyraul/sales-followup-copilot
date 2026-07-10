@@ -325,14 +325,50 @@ function looksLikePlaceholderFieldValue(
   placeholderValues: ReadonlySet<string>
 ): boolean {
   const normalizedBracketPlaceholder = value.match(/^\[([^\]]+)\]$/)?.[1]?.trim().toLowerCase();
+  const normalizedAnglePlaceholder = value.match(/^<([^>]+)>$/)?.[1]?.trim().toLowerCase();
+  const normalizedMustachePlaceholder = value.match(/^\{\{([^}]+)\}\}$/)?.[1]?.trim().toLowerCase();
 
   return (
     placeholderValues.has(value) ||
+    looksLikePlaceholderPhrase(value) ||
     (normalizedBracketPlaceholder != null &&
       looksLikePlaceholderFieldValue(normalizedBracketPlaceholder, placeholderValues)) ||
-    /^<[^>]+>$/.test(value) ||
-    /^\{\{[^}]+\}\}$/.test(value)
+    (normalizedAnglePlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedAnglePlaceholder, placeholderValues)) ||
+    (normalizedMustachePlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedMustachePlaceholder, placeholderValues))
   );
+}
+
+function looksLikePlaceholderPhrase(value: string): boolean {
+  const normalizedWords = value
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (normalizedWords.length === 0) {
+    return false;
+  }
+
+  const placeholderWords = new Set([
+    'subject',
+    'line',
+    'body',
+    'copy',
+    'text',
+    'message',
+    'email',
+    'draft',
+    'string'
+  ]);
+
+  const hasCorePlaceholderWord = normalizedWords.some(
+    (word) => word === 'subject' || word === 'body' || word === 'string'
+  );
+
+  return hasCorePlaceholderWord && normalizedWords.every((word) => placeholderWords.has(word));
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
