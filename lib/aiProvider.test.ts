@@ -509,6 +509,35 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('fenced JSON should still be extracted');
   });
 
+  it('accepts fenced JSON when the model uses a non-json fence label', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the reviewed draft:',
+          '```javascript',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should still recover reviewed JSON from a non-json fence label.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('non-json fence label');
+  });
+
   it('skips an earlier fenced block when a later fenced block contains the valid reviewed draft', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
