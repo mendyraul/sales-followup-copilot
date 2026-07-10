@@ -324,8 +324,12 @@ function looksLikePlaceholderFieldValue(
   value: string,
   placeholderValues: ReadonlySet<string>
 ): boolean {
+  const normalizedBracketPlaceholder = value.match(/^\[([^\]]+)\]$/)?.[1]?.trim().toLowerCase();
+
   return (
     placeholderValues.has(value) ||
+    (normalizedBracketPlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedBracketPlaceholder, placeholderValues)) ||
     /^<[^>]+>$/.test(value) ||
     /^\{\{[^}]+\}\}$/.test(value)
   );

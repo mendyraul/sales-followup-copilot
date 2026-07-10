@@ -424,6 +424,38 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('ignore moustache template placeholders');
   });
 
+  it('skips square-bracket placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '[subject]',
+            body: '[body]'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore square-bracket template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore square-bracket template placeholders');
+  });
+
   it('skips field-name placeholder drafts when a later reviewed draft contains the real content', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
