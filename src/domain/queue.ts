@@ -116,7 +116,7 @@ export function nextActionScore(lead: Lead, now = new Date()): number {
 
 export function needsAttention(leads: Lead[], now = new Date()): Array<Lead & { nextAction: NextAction }> {
   return [...leads]
-    .filter((lead) => ['new', 'contacted', 'replied', 'hot'].includes(lead.status))
+    .filter((lead) => isActiveStatus(lead.status))
     .map((lead) => ({ ...lead, nextAction: getNextAction(lead, now) }))
     .sort((a, b) => b.nextAction.score - a.nextAction.score)
 }
