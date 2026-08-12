@@ -118,7 +118,7 @@ export function needsAttention(leads: Lead[], now = new Date()): Array<Lead & { 
   return [...leads]
     .filter((lead) => isActiveStatus(lead.status))
     .map((lead) => ({ ...lead, nextAction: getNextAction(lead, now) }))
-    .sort((a, b) => b.nextAction.score - a.nextAction.score);
+    .sort((a, b) => b.nextAction.score - a.nextAction.score)
 }
 
 export function queuePriority(score: number): QueuePriority {
