@@ -198,7 +198,7 @@ export function draftHistory(records: FollowUpDraftRecord[], draftId: string): F
   }
 
   const history: FollowUpDraftRecord[] = []
-  const visited = new Set<string>([current.id])
+  const visited = new Set<string>([draftId])
   let cursor: FollowUpDraftRecord | undefined = current
 
   while (cursor?.supersedesId) {
@@ -207,10 +207,9 @@ export function draftHistory(records: FollowUpDraftRecord[], draftId: string): F
     }
 
     const previous = byId.get(cursor.supersedesId)
-    if (!previous) {
+    if (!previous || visited.has(previous.id)) {
       break
     }
-
     visited.add(previous.id)
     history.push(previous)
     cursor = previous
@@ -240,9 +239,10 @@ export function currentDraftRevision(records: FollowUpDraftRecord[], draftId: st
     }
 
     const next = byId.get(cursor.supersededById)
-    if (!next) {
+    if (!next || visited.has(cursor.id) || visited.has(next.id)) {
       break
     }
+    visited.add(cursor.id)
     cursor = next
   }
 
