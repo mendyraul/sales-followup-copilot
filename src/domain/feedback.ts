@@ -244,12 +244,12 @@ export function feedbackHotspots(records: FeedbackRecord[], limit = 3): Feedback
     .slice(0, limit);
 }
 
-export function feedbackNeedsAttention(records: FeedbackRecord[]) {
+export function feedbackNeedsAttention(records: FeedbackRecord[], now = new Date()) {
   return [...records]
     .filter((record) => !record.resolved && (record.sentiment === 'negative' || (record.score ?? 5) <= 3))
     .sort((a, b) => {
       const escalationRank = { urgent: 0, watch: 1, fresh: 2, resolved: 3 } satisfies Record<FeedbackEscalation, number>;
-      const escalationDelta = escalationRank[feedbackEscalation(a)] - escalationRank[feedbackEscalation(b)];
+      const escalationDelta = escalationRank[feedbackEscalation(a, now)] - escalationRank[feedbackEscalation(b, now)];
       if (escalationDelta !== 0) {
         return escalationDelta;
       }
@@ -272,4 +272,3 @@ export function feedbackNeedsAttention(records: FeedbackRecord[]) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 }
-
