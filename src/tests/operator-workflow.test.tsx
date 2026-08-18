@@ -15,12 +15,13 @@ import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
 import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention, nextActionScore } from '../domain/queue';
+import { buildQueue, needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
   it('keeps the seeded queue and audit trail aligned for manual QA', () => {
     const queue = needsAttention(demoLeads);
+    const dashboardQueue = buildQueue(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
@@ -39,6 +40,10 @@ describe('operator workflow regression', () => {
     expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002', 'lead-demo-001']);
     expect(queue[0]).toMatchObject({
       status: 'hot',
+    });
+    expect(dashboardQueue[0].nextAction).toMatchObject({
+      label: 'Call or send a high-touch follow-up now',
+      followUpStage: 'jump to a high-priority follow-up',
     });
     expect(nextActionScore(queue[0])).toBeGreaterThan(nextActionScore(queue[1]));
 
@@ -118,6 +123,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Sales Follow-Up Copilot');
     expect(html).toContain('Tracked leads');
     expect(html).toContain('Queue items');
+    expect(html).toContain('Next action queue');
+    expect(html).toContain('Call or send a high-touch follow-up now');
+    expect(html).toContain('Next step: jump to a high-priority follow-up');
     expect(html).toContain('Manual QA checklist');
     expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');

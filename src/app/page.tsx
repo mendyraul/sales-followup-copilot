@@ -95,6 +95,12 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
           </span>
         </div>
       </div>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontWeight: 600, color: '#111827' }}>{item.nextAction.label}</div>
+        <div style={{ color: '#6b7280', marginTop: 4 }}>
+          Next step: {item.nextAction.followUpStage} · {item.nextAction.band}
+        </div>
+      </div>
       <p style={{ margin: '0 0 10px 0', color: '#374151' }}>{item.reason}</p>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 14 }}>
         <span>Priority score: {Math.round(item.score)}</span>
@@ -125,6 +131,56 @@ export default function HomePage() {
         <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
         <MetricCard label="Deploy checkpoints" value={String(deploymentSummary.totalItems)} helper="Release guardrails for manual-safe rollout" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Next action queue</h2>
+          <p style={mutedStyle}>
+            The dashboard now shows the recommended follow-up move for every queued lead so operators can act without reverse-engineering the score.
+          </p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {(['high', 'medium', 'low'] as const).map((priority) => {
+              const lane = queueGroups[priority];
+              const copy = laneCopy[priority];
+
+              return (
+                <section key={priority} style={{ display: 'grid', gap: 12 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0' }}>{copy.title}</h3>
+                    <div style={mutedStyle}>{copy.subtitle}</div>
+                  </div>
+                  {lane.length > 0 ? (
+                    lane.map((item) => <QueueCard key={item.lead.id} priority={priority} item={item} />)
+                  ) : (
+                    <div style={{ ...mutedStyle, padding: 12, border: '1px dashed #d0d7de', borderRadius: 12 }}>{copy.empty}</div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Operator guidance</h2>
+            <ul>
+              <li>Use the action label first; the score only explains urgency.</li>
+              <li>Check the follow-up stage before editing any draft.</li>
+              <li>Keep the queue manual-safe: no automatic outreach is triggered here.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>High-priority leads: {queueGroups.high.length}</li>
+              <li>Medium-priority leads: {queueGroups.medium.length}</li>
+              <li>Low-priority leads: {queueGroups.low.length}</li>
+              <li>Reference stages: {stages.length}</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>

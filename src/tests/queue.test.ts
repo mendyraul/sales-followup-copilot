@@ -134,6 +134,10 @@ describe('next action queue', () => {
     expect(queue[0]).toMatchObject({
       priority: 'medium',
       reason: 'Lead replied and has been waiting more than a day.',
+      nextAction: {
+        label: 'Draft the next response',
+        followUpStage: 'prepare the next personalized response',
+      },
       lead: { id: '1' },
     });
   });
