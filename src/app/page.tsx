@@ -10,7 +10,7 @@ import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
 import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
-import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { buildFeedbackCaptureDrafts, feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
 import { listFollowUpStages } from '../domain/followup';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
@@ -26,6 +26,7 @@ const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntri
 const latestFeedback = recentFeedback(demoFeedbackEntries);
 const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
+const feedbackCaptureDrafts = buildFeedbackCaptureDrafts(queue, demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
 const draftThreads = buildDraftThreads(demoDraftHistory);
@@ -422,6 +423,86 @@ export default function HomePage() {
               <li>Checklist doc: <code>docs/manual-qa.md</code></li>
               <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
               <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Feedback intake templates</h2>
+          <p style={mutedStyle}>
+            A manual-safe capture starter for the next three leads in the queue so reviewers can log structured feedback without inventing the payload from scratch.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
+            {feedbackCaptureDrafts.map((draft) => (
+              <li key={draft.leadId} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{draft.leadName}</strong>
+                    <div style={{ ...mutedStyle, marginTop: 4 }}>
+                      {draft.suggestedCategory.replace('_', ' ')} · {draft.source} · score {draft.suggestedScore}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={draft.priority === 'high' ? warningPillStyle : pillStyle}>{draft.priority}</span>
+                    <span style={draft.suggestedSentiment === 'negative' ? warningPillStyle : miniPillStyle}>{draft.suggestedSentiment}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture prompt</div>
+                  <div>{draft.prompt}</div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Metadata preview</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Object.entries(draft.metadataPreview).map(([key, value]) => (
+                      <span key={key} style={miniPillStyle}>{key}: {String(value)}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture checklist</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {draft.checklist.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Capture rules</h2>
+            <ul>
+              <li>Stick to `category`, `sentiment`, `message`, and optional 1-5 `score`.</li>
+              <li>Always link the note back to a lead when the workflow context is known.</li>
+              <li>Keep `SEND_MODE=manual` and treat feedback as review input, not automation permission.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>Suggested intake cards: {feedbackCaptureDrafts.length}</li>
+              <li>Highest-priority lead: {feedbackCaptureDrafts[0]?.leadName ?? 'n/a'}</li>
+              <li>Open feedback linked to those cards: {feedbackCaptureDrafts.reduce((sum, draft) => sum + draft.openFeedbackCount, 0)}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Runbook</h2>
+            <ul>
+              <li>Docs: <code>docs/feedback-capture.md</code></li>
+              <li>Source helpers: <code>src/domain/feedback.ts</code></li>
+              <li>Log enough metadata to recreate the queue context during QA review.</li>
             </ul>
           </div>
         </div>
