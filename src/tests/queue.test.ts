@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  buildQueue,
-  getNextAction,
-  groupQueueByPriority,
-  needsAttention,
-  nextActionScore,
-  queuePriority
-} from '../domain/queue';
+import { demoLeads } from '../data/demoLeads';
+import { buildQueue, getNextAction, groupQueueByPriority, needsAttention, nextActionScore, queuePriority } from '../domain/queue';
 
 describe('next action queue', () => {
   const now = new Date('2026-06-09T14:00:00.000Z');
@@ -38,6 +32,42 @@ describe('next action queue', () => {
     expect(action.band).toBe('today');
     expect(action.followUpStage).toBe('prepare the next personalized response');
     expect(action.reason).toContain('replied');
+  });
+
+  it('caps the age-based score boost for long-stale leads', () => {
+    const now = new Date('2026-06-20T12:00:00.000Z');
+    const lead = {
+      id: 'old-hot',
+      name: 'Old Hot Lead',
+      status: 'hot',
+      createdAt: '2026-06-01T12:00:00.000Z',
+      updatedAt: '2026-06-10T12:00:00.000Z',
+    } as any;
+
+    const action = getNextAction(lead, now);
+
+    expect(action.ageHours).toBe(240);
+    expect(action.score).toBe(172);
+    expect(nextActionScore(lead, now)).toBe(172);
+    expect(action.band).toBe('urgent');
+  });
+
+  it('uses the same-day nudge guidance for urgent contacted leads', () => {
+    const now = new Date('2026-06-13T06:00:00.000Z');
+    const lead = {
+      id: 'contacted-urgent',
+      name: 'Contacted Urgent',
+      status: 'contacted',
+      createdAt: '2026-06-09T12:00:00.000Z',
+      updatedAt: '2026-06-10T14:00:00.000Z',
+    } as any;
+
+    const action = getNextAction(lead, now);
+
+    expect(action.score).toBe(104);
+    expect(action.band).toBe('urgent');
+    expect(action.label).toBe('Send a nudge today');
+    expect(action.reason).toContain('ready for a same-day nudge');
   });
 
   it('sorts aged replied leads ahead of fresh contacted leads', () => {
@@ -104,7 +134,35 @@ describe('next action queue', () => {
     expect(queue[0]).toMatchObject({
       priority: 'medium',
       reason: 'Lead replied and has been waiting more than a day.',
+      nextAction: {
+        label: 'Draft the next response',
+        followUpStage: 'prepare the next personalized response',
+      },
       lead: { id: '1' },
+    });
+  });
+
+  it('clamps future timestamps to zero age in queue metadata', () => {
+    const now = new Date('2026-06-10T12:00:00.000Z');
+    const queue = buildQueue(
+      [
+        {
+          id: 'future-contacted',
+          name: 'Future Contacted',
+          status: 'contacted',
+          createdAt: '2026-06-10T12:00:00.000Z',
+          updatedAt: '2026-06-11T12:00:00.000Z',
+        },
+      ] as any,
+      now
+    );
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({
+      ageHours: 0,
+      priority: 'low',
+      reason: 'Contacted lead needs the next action scheduled.',
+      score: 40,
     });
   });
 
@@ -131,6 +189,86 @@ describe('next action queue', () => {
     expect(groups.low.map((item) => item.lead.id)).toEqual(['new']);
   });
 
+  it('keeps short-form operator queue reasons stable across active lead states', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-fast', name: 'Hot Fast', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-18T16:53:00.000Z' },
+        { id: 'replied-fresh', name: 'Replied Fresh', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-18T13:53:00.000Z' },
+        { id: 'contacted-fresh', name: 'Contacted Fresh', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-18T15:53:00.000Z' },
+        { id: 'new-fresh', name: 'New Fresh', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-18T18:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(queue.map((item) => [item.lead.id, item.reason])).toEqual([
+      ['hot-fast', 'Hot lead needs the fastest response.'],
+      ['replied-fresh', 'Lead replied and should get a follow-up queued.'],
+      ['contacted-fresh', 'Contacted lead needs the next action scheduled.'],
+      ['new-fresh', 'New lead should receive a first follow-up draft.'],
+    ]);
+  });
+
+  it('keeps aged operator queue reasons stable across threshold boundaries', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-stale', name: 'Hot Stale', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T17:53:00.000Z' },
+        { id: 'replied-stale', name: 'Replied Stale', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T18:53:00.000Z' },
+        { id: 'contacted-stale', name: 'Contacted Stale', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T18:53:00.000Z' },
+        { id: 'new-stale', name: 'New Stale', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T17:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-stale': 'Hot lead has gone a full day without a follow-up.',
+      'replied-stale': 'Lead replied and has been waiting more than a day.',
+      'contacted-stale': 'Previously contacted lead is cooling off without a next step.',
+      'new-stale': 'New lead has been sitting untouched for over a day.',
+    });
+  });
+
+  it('switches queue reason copy exactly at the documented age cutoffs', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-edge', name: 'Hot Edge', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' },
+        { id: 'replied-edge', name: 'Replied Edge', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' },
+        { id: 'contacted-edge', name: 'Contacted Edge', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T19:53:00.000Z' },
+        { id: 'new-edge', name: 'New Edge', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T19:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-edge': 'Hot lead has gone a full day without a follow-up.',
+      'replied-edge': 'Lead replied and has been waiting more than a day.',
+      'contacted-edge': 'Previously contacted lead is cooling off without a next step.',
+      'new-edge': 'New lead has been sitting untouched for over a day.',
+    });
+  });
+
+  it('keeps the fresh queue reason copy right until the cutoff boundary', () => {
+    const now = new Date('2026-06-18T19:53:00.000Z');
+    const queue = buildQueue(
+      [
+        { id: 'hot-pre-edge', name: 'Hot Pre Edge', status: 'hot', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' },
+        { id: 'replied-pre-edge', name: 'Replied Pre Edge', status: 'replied', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' },
+        { id: 'contacted-pre-edge', name: 'Contacted Pre Edge', status: 'contacted', createdAt: now.toISOString(), updatedAt: '2026-06-16T20:53:00.000Z' },
+        { id: 'new-pre-edge', name: 'New Pre Edge', status: 'new', createdAt: now.toISOString(), updatedAt: '2026-06-17T20:53:00.000Z' }
+      ] as any,
+      now
+    );
+
+    expect(Object.fromEntries(queue.map((item) => [item.lead.id, item.reason]))).toEqual({
+      'hot-pre-edge': 'Hot lead needs the fastest response.',
+      'replied-pre-edge': 'Lead replied and should get a follow-up queued.',
+      'contacted-pre-edge': 'Contacted lead needs the next action scheduled.',
+      'new-pre-edge': 'New lead should receive a first follow-up draft.',
+    });
+  });
+
   it('uses lead age to break ties within the same status bucket', () => {
     const now = new Date('2026-06-18T19:53:00.000Z');
     const leads = [
@@ -153,5 +291,20 @@ describe('next action queue', () => {
 
     const queue = needsAttention(leads, now as any);
     expect(queue.map((lead) => lead.id)).toEqual(['new-lead']);
+  });
+
+  it('keeps seeded dashboard ordering aligned between needsAttention and buildQueue', () => {
+    const attentionOrder = needsAttention(demoLeads).map((lead) => lead.id);
+    const queueOrder = buildQueue(demoLeads).map((item) => item.lead.id);
+
+    expect(queueOrder).toEqual(attentionOrder);
+  });
+
+  it('keeps seeded priority lanes in dashboard display order', () => {
+    const groups = groupQueueByPriority(buildQueue(demoLeads));
+
+    expect(groups.high.map((item) => item.lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002']);
+    expect(groups.medium.map((item) => item.lead.id)).toEqual(['lead-demo-001']);
+    expect(groups.low).toEqual([]);
   });
 });

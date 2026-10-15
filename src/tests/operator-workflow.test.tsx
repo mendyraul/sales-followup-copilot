@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import HomePage from '../app/page';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
+import { demoDraftHistory } from '../data/demoDraftHistory';
 import { demoFeedbackEntries } from '../data/demoFeedback';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
@@ -11,14 +12,16 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
+import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
 import { feedbackHotspots, recentFeedback, summarizeFeedback } from '../domain/feedback';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { needsAttention, nextActionScore } from '../domain/queue';
+import { buildQueue, needsAttention, nextActionScore } from '../domain/queue';
 import { entriesForLead, notesForLead, summarizeTimeline } from '../domain/timeline';
 
 describe('operator workflow regression', () => {
   it('keeps the seeded queue and audit trail aligned for manual QA', () => {
     const queue = needsAttention(demoLeads);
+    const dashboardQueue = buildQueue(demoLeads);
     const coverage = summarizeAuditCoverage(demoAuditLog);
     const latestEvents = recentAuditEntries(demoAuditLog, 4);
     const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
@@ -27,6 +30,8 @@ describe('operator workflow regression', () => {
     const latestFeedback = recentFeedback(demoFeedbackEntries);
     const hotspots = feedbackHotspots(demoFeedbackEntries);
     const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
+    const draftThreads = buildDraftThreads(demoDraftHistory);
+    const draftHistorySummary = summarizeDraftHistory(demoDraftHistory);
     const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status\nAvery Smith,avery@example.com,+1-555-0101,Referral,new\nJordan Lee,jordan@example.com,,Website,contacted\nPat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot\nJordan Lee,jordan@example.com,+1-555-0102,,replied\nNo Email,,+1-555-0110,Tradeshow,new`);
     const leadThreeTimeline = entriesForLead(demoTimelineEntries, 'lead-demo-003');
     const leadThreeNotes = notesForLead(demoLeadNotes, 'lead-demo-003');
@@ -35,6 +40,10 @@ describe('operator workflow regression', () => {
     expect(queue.map((lead) => lead.id)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002', 'lead-demo-001']);
     expect(queue[0]).toMatchObject({
       status: 'hot',
+    });
+    expect(dashboardQueue[0].nextAction).toMatchObject({
+      label: 'Call or send a high-touch follow-up now',
+      followUpStage: 'jump to a high-priority follow-up',
     });
     expect(nextActionScore(queue[0])).toBeGreaterThan(nextActionScore(queue[1]));
 
@@ -87,6 +96,20 @@ describe('operator workflow regression', () => {
       totalEvents: 5,
       totalNotes: 3,
     });
+    expect(draftHistorySummary).toEqual({
+      totalThreads: 3,
+      totalRevisions: 5,
+      revisedThreads: 1,
+      pendingThreads: 1,
+      approvedThreads: 1,
+      rejectedThreads: 1,
+      latestUpdatedAt: '2026-06-10T07:28:00.000Z',
+    });
+    expect(draftThreads[0]).toMatchObject({
+      latestDecision: 'approve',
+      latestActor: 'raul',
+    });
+    expect(draftThreads[0]?.history.map((revision) => revision.id)).toEqual(['draft-demo-001', 'draft-demo-001-v2']);
     expect(csvPreview.validRows).toHaveLength(4);
     expect(csvPreview.duplicateEmails).toEqual(['jordan@example.com']);
     expect(csvPreview.issues).toEqual([{ rowNumber: 6, message: 'Missing required email' }]);
@@ -100,6 +123,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Sales Follow-Up Copilot');
     expect(html).toContain('Tracked leads');
     expect(html).toContain('Queue items');
+    expect(html).toContain('Next action queue');
+    expect(html).toContain('Call or send a high-touch follow-up now');
+    expect(html).toContain('Next step: jump to a high-priority follow-up');
     expect(html).toContain('Manual QA checklist');
     expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');
@@ -116,6 +142,9 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Audit coverage');
     expect(html).toContain('Lead timeline');
     expect(html).toContain('Timeline summary');
+    expect(html).toContain('Draft review history');
+    expect(html).toContain('Revision coverage');
+    expect(html).toContain('Stage guide');
     expect(html).toContain('Deployment readiness');
     expect(html).toContain('Release summary');
     expect(html).toContain('Deploy checkpoints');
@@ -138,6 +167,8 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Manual QA checks');
     expect(html).toContain('Blocked rows');
     expect(html).toContain('Structured notes');
+    expect(html).toContain('Tracked draft threads');
+    expect(html).toContain('Pending approvals');
     expect(html).toContain('manual');
     expect(html).toContain('Lead events: 2');
     expect(html).toContain('Feedback events: 1');

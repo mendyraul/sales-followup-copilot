@@ -195,25 +195,186 @@ function extractOpenAiDraftPayload(payload: OpenAiResponsesPayload): OpenAiDraft
     .concat(
       (payload.output ?? []).flatMap((item) =>
         (item.content ?? [])
-          .filter((entry) => entry.type === 'output_text' && typeof entry.text === 'string')
+          .filter(
+            (entry) =>
+              typeof entry.text === 'string' && (entry.type === 'output_text' || entry.type == null)
+          )
           .map((entry) => entry.text as string)
       )
     )
-    .map((value) => value?.trim())
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
     .filter((value): value is string => Boolean(value));
 
-  const draftText = candidateTexts[0];
-
-  if (!draftText) {
+  if (candidateTexts.length === 0) {
     throw new Error('OpenAI draft generation returned no output_text payload.');
   }
 
-  return JSON.parse(stripJsonCodeFence(draftText)) as OpenAiDraftPayload;
+  for (const candidateText of candidateTexts) {
+    for (const jsonCandidate of extractJsonCandidates(candidateText)) {
+      try {
+        const parsed = JSON.parse(jsonCandidate) as OpenAiDraftPayload;
+
+        if (hasUsableDraftFields(parsed) && !looksLikePlaceholderDraft(parsed)) {
+          return parsed;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  throw new Error('OpenAI draft generation returned invalid JSON payload.');
 }
 
-function stripJsonCodeFence(value: string): string {
-  const fencedMatch = value.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
-  return fencedMatch ? fencedMatch[1].trim() : value;
+function extractJsonCandidates(value: string): string[] {
+  const trimmed = value.trim();
+  const fencedBlockPattern = /```(?:[a-z0-9_-]+)?\s*([\s\S]*?)```/gi;
+  const fencedMatches = [...trimmed.matchAll(fencedBlockPattern)]
+    .map((match) => match[1]?.trim())
+    .filter((match): match is string => Boolean(match));
+  const textOutsideFences = trimmed.replace(fencedBlockPattern, ' ').trim();
+
+  const candidates = [
+    trimmed,
+    ...extractBalancedJsonObjects(trimmed),
+    ...extractBalancedJsonObjects(textOutsideFences)
+  ];
+
+  return [...fencedMatches, ...candidates.filter((candidate) => !fencedMatches.includes(candidate))];
+}
+
+function extractBalancedJsonObjects(value: string): string[] {
+  const matches: string[] = [];
+  for (let searchIndex = 0; searchIndex < value.length; searchIndex += 1) {
+    const startIndex = value.indexOf('{', searchIndex);
+
+    if (startIndex === -1) {
+      break;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
+
+    for (let index = startIndex; index < value.length; index += 1) {
+      const character = value[index];
+
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+
+      if (character === '\\' && inString) {
+        escaping = true;
+        continue;
+      }
+
+      if (character === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (character === '{') {
+        depth += 1;
+        continue;
+      }
+
+      if (character === '}' && depth > 0) {
+        depth -= 1;
+
+        if (depth === 0) {
+          matches.push(value.slice(startIndex, index + 1).trim());
+          searchIndex = index;
+          break;
+        }
+      }
+    }
+  }
+
+  return matches.filter(Boolean);
+}
+
+function hasUsableDraftFields(payload: OpenAiDraftPayload): boolean {
+  return Boolean(payload.subject?.trim() && payload.body?.trim());
+}
+
+function looksLikePlaceholderDraft(payload: OpenAiDraftPayload): boolean {
+  const subject = payload.subject?.trim().toLowerCase();
+  const body = payload.body?.trim().toLowerCase();
+
+  if (!subject || !body) {
+    return false;
+  }
+
+  const placeholderValues = new Set([
+    'string',
+    '<string>',
+    '<subject>',
+    '<body>',
+    'subject',
+    'body'
+  ]);
+
+  return (
+    looksLikePlaceholderFieldValue(subject, placeholderValues) ||
+    looksLikePlaceholderFieldValue(body, placeholderValues)
+  );
+}
+
+function looksLikePlaceholderFieldValue(
+  value: string,
+  placeholderValues: ReadonlySet<string>
+): boolean {
+  const normalizedBracketPlaceholder = value.match(/^\[([^\]]+)\]$/)?.[1]?.trim().toLowerCase();
+  const normalizedAnglePlaceholder = value.match(/^<([^>]+)>$/)?.[1]?.trim().toLowerCase();
+  const normalizedMustachePlaceholder = value.match(/^\{\{([^}]+)\}\}$/)?.[1]?.trim().toLowerCase();
+
+  return (
+    placeholderValues.has(value) ||
+    looksLikePlaceholderPhrase(value) ||
+    (normalizedBracketPlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedBracketPlaceholder, placeholderValues)) ||
+    (normalizedAnglePlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedAnglePlaceholder, placeholderValues)) ||
+    (normalizedMustachePlaceholder != null &&
+      looksLikePlaceholderFieldValue(normalizedMustachePlaceholder, placeholderValues))
+  );
+}
+
+function looksLikePlaceholderPhrase(value: string): boolean {
+  const normalizedWords = value
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (normalizedWords.length === 0) {
+    return false;
+  }
+
+  const placeholderWords = new Set([
+    'subject',
+    'line',
+    'body',
+    'copy',
+    'text',
+    'message',
+    'email',
+    'draft',
+    'string'
+  ]);
+
+  const hasCorePlaceholderWord = normalizedWords.some(
+    (word) => word === 'subject' || word === 'body' || word === 'string'
+  );
+
+  return hasCorePlaceholderWord && normalizedWords.every((word) => placeholderWords.has(word));
 }
 
 export function buildOpenAiPrompt(input: DraftGenerationInput): string {
