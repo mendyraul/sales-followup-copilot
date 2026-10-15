@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { demoFeedbackEntries } from '../data/demoFeedback';
-import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { demoLeads } from '../data/demoLeads';
+import { buildFeedbackCaptureDrafts, feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, normalizeFeedback, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { buildQueue } from '../domain/queue';
 
 describe('feedback normalization', () => {
   it('trims message and defaults source', () => {
@@ -587,5 +589,60 @@ describe('feedback normalization', () => {
       open: 0,
       oldestOpenAt: null,
     });
+  });
+
+  it('builds feedback intake templates from the active queue context', () => {
+    const drafts = buildFeedbackCaptureDrafts(
+      buildQueue(demoLeads, new Date('2026-06-10T12:00:00.000Z')),
+      demoFeedbackEntries
+    );
+
+    expect(drafts.map((draft) => draft.leadId)).toEqual(['lead-demo-003', 'lead-demo-004', 'lead-demo-002']);
+    expect(drafts[0]).toMatchObject({
+      leadName: 'Morgan Patel',
+      priority: 'high',
+      suggestedCategory: 'result_quality',
+      source: 'in_app',
+      metadataPreview: {
+        queuePriority: 'high',
+        latestReviewer: 'qa-reviewer',
+      },
+    });
+    expect(drafts[0].prompt).toContain('latest open result quality note');
+    expect(drafts[0].checklist[1]).toContain('queue priority (high)');
+  });
+
+  it('prefers the latest unresolved note when newer resolved feedback exists', () => {
+    const mixedResolutionEntries = [
+      ...demoFeedbackEntries,
+      {
+        ...demoFeedbackEntries[0],
+        id: 'feedback-demo-004',
+        createdAt: '2026-06-10T08:30:00.000Z',
+        reviewer: 'ops-reviewer',
+        resolved: true,
+        sentiment: 'positive' as const,
+        score: 4,
+        message: 'Follow-up copy looked good after the retry.',
+      },
+    ];
+
+    const drafts = buildFeedbackCaptureDrafts(
+      buildQueue(demoLeads, new Date('2026-06-10T12:00:00.000Z')),
+      mixedResolutionEntries
+    );
+
+    expect(drafts[0]).toMatchObject({
+      leadId: 'lead-demo-003',
+      suggestedCategory: 'result_quality',
+      suggestedSentiment: 'neutral',
+      suggestedScore: 3,
+      metadataPreview: {
+        latestReviewer: 'qa-reviewer',
+        openFeedbackCount: 1,
+      },
+    });
+    expect(drafts[0].prompt).toContain('latest open result quality note');
+    expect(drafts[0].checklist[0]).toContain('open result quality note from qa-reviewer');
   });
 });
