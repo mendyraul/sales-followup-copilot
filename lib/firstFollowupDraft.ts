@@ -1,4 +1,5 @@
 import {
+  buildMockDraft,
   createAiProvider,
   type AiProviderConfig,
   type DraftGenerationInput,
@@ -6,6 +7,8 @@ import {
 } from './aiProvider';
 
 export type FirstFollowupTone = DraftGenerationInput['tone'];
+export type FirstFollowupContextSource = 'recentContext' | 'leadSource';
+export type FirstFollowupObjectiveSource = 'explicit' | 'default';
 
 export type FirstFollowupDraftRequest = {
   leadName: string;
@@ -16,15 +19,53 @@ export type FirstFollowupDraftRequest = {
   tone?: FirstFollowupTone;
 };
 
-export type FirstFollowupDraftResult = DraftGenerationResult & {
-  reviewChecklist: string[];
+export type FirstFollowupReviewContext = {
+  leadName: string;
+  companyName?: string;
+  recentContext?: string;
+  objective: string;
+  objectiveSource: FirstFollowupObjectiveSource;
+  tone: FirstFollowupTone;
+  contextSources: FirstFollowupContextSource[];
+  missingFields: string[];
 };
 
-const REVIEW_CHECKLIST = [
+export type FirstFollowupDraftResult = DraftGenerationResult & {
+  reviewChecklist: string[];
+  reviewContext: FirstFollowupReviewContext;
+};
+
+export const FIRST_FOLLOWUP_REVIEW_CHECKLIST = [
   'Confirm the draft reflects the latest lead context before sending.',
   'Verify any requested next step or CTA is accurate and still available.',
   'Keep SEND_MODE=manual until a human explicitly approves outbound delivery.'
 ];
+
+export function buildFirstFollowupWarnings(
+  reviewContext: FirstFollowupReviewContext
+): string[] {
+  const warnings: string[] = [];
+
+  if (reviewContext.objectiveSource === 'default') {
+    warnings.push(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
+  }
+
+  if (!reviewContext.contextSources.includes('recentContext')) {
+    warnings.push(
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail'
+    );
+  }
+
+  if (!reviewContext.companyName) {
+    warnings.push(
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be'
+    );
+  }
+
+  return warnings;
+}
 
 export function buildFirstFollowupInput(
   request: FirstFollowupDraftRequest
@@ -36,7 +77,7 @@ export function buildFirstFollowupInput(
   }
 
   const sourceContext = request.leadSource?.trim()
-    ? `Lead source: ${request.leadSource?.trim()}.`
+    ? `you first reached out through ${request.leadSource.trim()}`
     : '';
   const recentContext = request.recentContext?.trim() ?? '';
   const combinedContext = [recentContext, sourceContext].filter(Boolean).join(' ');
@@ -53,15 +94,65 @@ export function buildFirstFollowupInput(
   };
 }
 
+export function buildFirstFollowupReviewContext(
+  request: FirstFollowupDraftRequest
+): FirstFollowupReviewContext {
+  const input = buildFirstFollowupInput(request);
+  const contextSources: FirstFollowupContextSource[] = [];
+
+  if (request.recentContext?.trim()) {
+    contextSources.push('recentContext');
+  }
+
+  if (request.leadSource?.trim()) {
+    contextSources.push('leadSource');
+  }
+
+  const missingFields = [
+    !input.companyName ? 'companyName' : null,
+    !request.recentContext?.trim() ? 'recentContext' : null,
+    !request.leadSource?.trim() ? 'leadSource' : null,
+    !request.desiredNextStep?.trim() ? 'desiredNextStep' : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    leadName: input.leadName,
+    companyName: input.companyName,
+    recentContext: input.recentContext,
+    objective: input.objective ?? '',
+    objectiveSource: request.desiredNextStep?.trim() ? 'explicit' : 'default',
+    tone: input.tone ?? 'friendly',
+    contextSources,
+    missingFields,
+  };
+}
+
 export async function generateFirstFollowupDraft(
   request: FirstFollowupDraftRequest,
   config: AiProviderConfig
 ): Promise<FirstFollowupDraftResult> {
   const provider = createAiProvider(config);
   const draft = await provider.generateDraft(buildFirstFollowupInput(request));
+  const reviewContext = buildFirstFollowupReviewContext(request);
 
   return {
     ...draft,
-    reviewChecklist: REVIEW_CHECKLIST
+    warnings: [...draft.warnings, ...buildFirstFollowupWarnings(reviewContext)],
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+    reviewContext,
+  };
+}
+
+export function buildDemoFirstFollowupDraft(
+  request: FirstFollowupDraftRequest
+): FirstFollowupDraftResult {
+  const draft = buildMockDraft(buildFirstFollowupInput(request));
+  const reviewContext = buildFirstFollowupReviewContext(request);
+
+  return {
+    ...draft,
+    warnings: [...draft.warnings, ...buildFirstFollowupWarnings(reviewContext)],
+    reviewChecklist: FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+    reviewContext,
   };
 }

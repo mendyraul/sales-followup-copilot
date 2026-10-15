@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildFirstFollowupInput, generateFirstFollowupDraft } from './firstFollowupDraft';
+import {
+  buildDemoFirstFollowupDraft,
+  buildFirstFollowupInput,
+  buildFirstFollowupReviewContext,
+  buildFirstFollowupWarnings,
+  FIRST_FOLLOWUP_REVIEW_CHECKLIST,
+  generateFirstFollowupDraft
+} from './firstFollowupDraft';
 
 describe('buildFirstFollowupInput', () => {
   it('builds a manual-safe default first-followup payload', () => {
@@ -13,7 +20,7 @@ describe('buildFirstFollowupInput', () => {
     ).toEqual({
       leadName: 'Alex',
       companyName: 'Northwind',
-      recentContext: 'they asked about onboarding timelines Lead source: web demo form.',
+      recentContext: 'they asked about onboarding timelines you first reached out through web demo form',
       objective: 're-engaging after the first conversation and confirming the best next step',
       tone: 'friendly'
     });
@@ -47,7 +54,7 @@ describe('buildFirstFollowupInput', () => {
     ).toEqual({
       leadName: 'Jordan',
       companyName: undefined,
-      recentContext: 'Lead source: partner referral.',
+      recentContext: 'you first reached out through partner referral',
       objective: 're-engaging after the first conversation and confirming the best next step',
       tone: 'friendly'
     });
@@ -93,10 +100,105 @@ describe('generateFirstFollowupDraft', () => {
     expect(result.subject).toContain('Casey');
     expect(result.body).toContain('sending a concise recap and booking a follow-up');
     expect(result.warnings).toContain('mock-provider: deterministic local draft only');
-    expect(result.reviewChecklist).toEqual([
-      'Confirm the draft reflects the latest lead context before sending.',
-      'Verify any requested next step or CTA is accurate and still available.',
-      'Keep SEND_MODE=manual until a human explicitly approves outbound delivery.'
+    expect(result.warnings).not.toContain(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
+    expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
+    expect(result.reviewContext).toEqual({
+      leadName: 'Casey',
+      companyName: 'Acme',
+      recentContext: 'they wanted a recap before sharing it internally',
+      objective: 'sending a concise recap and booking a follow-up',
+      objectiveSource: 'explicit',
+      tone: 'friendly',
+      contextSources: ['recentContext'],
+      missingFields: ['leadSource'],
+    });
+  });
+});
+
+describe('buildFirstFollowupReviewContext', () => {
+  it('flags inferred vs explicit review inputs for manual QA', () => {
+    expect(
+      buildFirstFollowupReviewContext({
+        leadName: 'Jordan',
+        leadSource: 'partner intro',
+      })
+    ).toEqual({
+      leadName: 'Jordan',
+      companyName: undefined,
+      recentContext: 'you first reached out through partner intro',
+      objective: 're-engaging after the first conversation and confirming the best next step',
+      objectiveSource: 'default',
+      tone: 'friendly',
+      contextSources: ['leadSource'],
+      missingFields: ['companyName', 'recentContext', 'desiredNextStep'],
+    });
+  });
+});
+
+describe('buildFirstFollowupWarnings', () => {
+  it('surfaces manual-review warnings when the draft relies on fallback inputs', () => {
+    expect(
+      buildFirstFollowupWarnings(
+        buildFirstFollowupReviewContext({
+          leadName: 'Jordan',
+          leadSource: 'partner intro',
+        })
+      )
+    ).toEqual([
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective',
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail',
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be',
     ]);
+  });
+});
+
+describe('buildDemoFirstFollowupDraft', () => {
+  it('builds a seeded manual-safe draft preview without async provider setup', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      companyName: 'Northwind',
+      recentContext: 'Phone call went to voicemail. Next step is a short value-focused email with two proof points.',
+      desiredNextStep: 'sending a concise recap and booking a short review',
+      tone: 'direct'
+    });
+
+    expect(result.provider).toBe('mock');
+    expect(result.subject).toContain('Jordan');
+    expect(result.body).toContain('Phone call went to voicemail');
+    expect(result.body).toContain('sending a concise recap and booking a short review');
+    expect(result.warnings).toContain('mock-provider: deterministic local draft only');
+    expect(result.warnings).not.toContain(
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective'
+    );
+    expect(result.reviewChecklist).toEqual(FIRST_FOLLOWUP_REVIEW_CHECKLIST);
+    expect(result.reviewContext.contextSources).toEqual(['recentContext']);
+    expect(result.reviewContext.missingFields).toEqual(['leadSource']);
+  });
+
+  it('adds fallback warnings when review inputs are missing', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      leadSource: 'partner intro',
+    });
+
+    expect(result.warnings).toEqual([
+      'mock-provider: deterministic local draft only',
+      'manual-review: desiredNextStep was missing, so the draft falls back to a generic follow-up objective',
+      'manual-review: no recentContext note was provided, so the opening line may need more lead-specific detail',
+      'manual-review: companyName is missing, so the subject/body may be less specific than the final outreach should be',
+    ]);
+  });
+
+  it('renders lead-source-only drafts without awkward punctuation or label copy', () => {
+    const result = buildDemoFirstFollowupDraft({
+      leadName: 'Jordan',
+      leadSource: 'partner intro',
+    });
+
+    expect(result.body).toContain('I kept in mind that you first reached out through partner intro.');
+    expect(result.body).not.toContain('Lead source:');
+    expect(result.body).not.toContain('..');
   });
 });
