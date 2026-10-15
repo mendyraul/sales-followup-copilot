@@ -20,6 +20,7 @@ import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/
 
 const coverage = summarizeAuditCoverage(demoAuditLog);
 const latestEvents = recentAuditEntries(demoAuditLog, 4);
+const queue = buildQueue(demoLeads);
 const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
 const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
 const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
@@ -45,7 +46,6 @@ Jordan Lee,jordan@example.com,,Website,contacted
 Pat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot
 Jordan Lee,jordan@example.com,+1-555-0102,,replied
 No Email,,+1-555-0110,Tradeshow,new`);
-const queue = buildQueue(demoLeads);
 const queueGroups = groupQueueByPriority(queue);
 
 const priorityColors = {
