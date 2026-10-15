@@ -1,6 +1,7 @@
 import React from 'react';
 import { demoAuditLog } from '../data/demoAuditLog';
 import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
+import { demoDraftHistory } from '../data/demoDraftHistory';
 import { demoFeedbackEntries } from '../data/demoFeedback';
 import { demoLeads } from '../data/demoLeads';
 import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
@@ -8,7 +9,9 @@ import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
 import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
 import { parseLeadCsvPreview } from '../domain/csv-import';
 import { summarizeDeploymentChecklist } from '../domain/deployment';
+import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
 import { feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
+import { listFollowUpStages } from '../domain/followup';
 import { summarizeManualQaChecklist } from '../domain/manual-qa';
 import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
 import { listHotLeads } from '../domain/hot-lead';
@@ -25,6 +28,8 @@ const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
 const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
 const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
 const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
+const draftThreads = buildDraftThreads(demoDraftHistory);
+const draftHistorySummary = summarizeDraftHistory(demoDraftHistory);
 const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
 Avery Smith,avery@example.com,+1-555-0101,Referral,new
 Jordan Lee,jordan@example.com,,Website,contacted
@@ -90,6 +95,12 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
           </span>
         </div>
       </div>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontWeight: 600, color: '#111827' }}>{item.nextAction.label}</div>
+        <div style={{ color: '#6b7280', marginTop: 4 }}>
+          Next step: {item.nextAction.followUpStage} · {item.nextAction.band}
+        </div>
+      </div>
       <p style={{ margin: '0 0 10px 0', color: '#374151' }}>{item.reason}</p>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 14 }}>
         <span>Priority score: {Math.round(item.score)}</span>
@@ -100,6 +111,8 @@ function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof 
 }
 
 export default function HomePage() {
+  const stages = listFollowUpStages();
+
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
       <section>
@@ -118,6 +131,56 @@ export default function HomePage() {
         <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
         <MetricCard label="Deploy checkpoints" value={String(deploymentSummary.totalItems)} helper="Release guardrails for manual-safe rollout" />
         <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Next action queue</h2>
+          <p style={mutedStyle}>
+            The dashboard now shows the recommended follow-up move for every queued lead so operators can act without reverse-engineering the score.
+          </p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {(['high', 'medium', 'low'] as const).map((priority) => {
+              const lane = queueGroups[priority];
+              const copy = laneCopy[priority];
+
+              return (
+                <section key={priority} style={{ display: 'grid', gap: 12 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0' }}>{copy.title}</h3>
+                    <div style={mutedStyle}>{copy.subtitle}</div>
+                  </div>
+                  {lane.length > 0 ? (
+                    lane.map((item) => <QueueCard key={item.lead.id} priority={priority} item={item} />)
+                  ) : (
+                    <div style={{ ...mutedStyle, padding: 12, border: '1px dashed #d0d7de', borderRadius: 12 }}>{copy.empty}</div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Operator guidance</h2>
+            <ul>
+              <li>Use the action label first; the score only explains urgency.</li>
+              <li>Check the follow-up stage before editing any draft.</li>
+              <li>Keep the queue manual-safe: no automatic outreach is triggered here.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Coverage</h2>
+            <ul>
+              <li>High-priority leads: {queueGroups.high.length}</li>
+              <li>Medium-priority leads: {queueGroups.medium.length}</li>
+              <li>Low-priority leads: {queueGroups.low.length}</li>
+              <li>Reference stages: {stages.length}</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
@@ -221,6 +284,101 @@ export default function HomePage() {
               <li>Confirm each lead card shows a recent note preview.</li>
               <li>Confirm timeline events stay newest-first per lead.</li>
               <li>Confirm draft review history appears without enabling live sending.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.3fr 1fr' }}>
+        <div style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Draft review history</h2>
+          <p style={mutedStyle}>
+            Each seeded draft thread keeps its revision lineage, reviewer notes, and latest decision visible so manual approval stays auditable.
+          </p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {draftThreads.map((thread) => {
+              const lead = demoLeads.find((candidate) => candidate.id === thread.current.leadId);
+              const latestReview = thread.current.reviewLog[thread.current.reviewLog.length - 1];
+              const stageDefinition = stages.find((stage) => stage.stage === thread.current.stage);
+              return (
+                <article key={thread.current.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{lead?.name ?? thread.current.leadId}</strong>
+                      <div style={mutedStyle}>
+                        {stageDefinition?.label ?? thread.current.stage} · revision v{thread.current.version} · {thread.current.mode}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={pillStyle}>{thread.history.length + 1} revisions</span>
+                      <span style={thread.current.status === 'rejected' ? warningPillStyle : miniPillStyle}>{thread.current.status}</span>
+                    </div>
+                  </div>
+
+                  <div>{thread.current.content}</div>
+
+                  <div style={{ ...mutedStyle, display: 'grid', gap: 4 }}>
+                    <div><strong>Latest decision:</strong> {thread.latestDecision ?? 'pending review'}</div>
+                    <div><strong>Reviewed by:</strong> {thread.latestActor ?? 'Awaiting human review'}</div>
+                    <div><strong>Stage action:</strong> {stageDefinition?.recommendedAction ?? 'Review the current draft before any send step.'}</div>
+                  </div>
+
+                  {latestReview?.notes ? (
+                    <div style={{ ...mutedStyle, borderTop: '1px solid #d8dee4', paddingTop: 8 }}>
+                      <strong>Latest note:</strong> {latestReview.notes}
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <div style={{ ...mutedStyle, marginBottom: 6 }}>Revision lineage</div>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
+                      {thread.history.map((revision) => (
+                        <li key={revision.id} style={{ borderTop: '1px solid #d8dee4', paddingTop: 6 }}>
+                          <strong>v{revision.version}</strong> · {revision.status} · {formatTimestamp(revision.updatedAt.toISOString())}
+                        </li>
+                      ))}
+                      <li style={{ borderTop: '1px solid #d8dee4', paddingTop: 6 }}>
+                        <strong>v{thread.current.version}</strong> · current · {formatTimestamp(thread.current.updatedAt.toISOString())}
+                      </li>
+                    </ul>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Revision coverage</h2>
+            <ul>
+              <li>Tracked draft threads: {draftHistorySummary.totalThreads}</li>
+              <li>Total revisions: {draftHistorySummary.totalRevisions}</li>
+              <li>Revised threads: {draftHistorySummary.revisedThreads}</li>
+              <li>Pending approvals: {draftHistorySummary.pendingThreads}</li>
+              <li>Approved drafts: {draftHistorySummary.approvedThreads}</li>
+              <li>Rejected drafts: {draftHistorySummary.rejectedThreads}</li>
+              <li>Latest review update: {formatTimestamp(draftHistorySummary.latestUpdatedAt ?? '')}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2>Stage guide</h2>
+            <ul>
+              {stages.map((stage) => (
+                <li key={stage.stage}>
+                  <strong>{stage.label}:</strong> {stage.recommendedAction}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h2>Manual QA prompts</h2>
+            <ul>
+              <li>Confirm each edit creates a visible new revision instead of mutating old copy.</li>
+              <li>Check approval and rejection notes stay attached to the current review trail.</li>
+              <li>Verify manual mode remains visible before any send step is taken.</li>
             </ul>
           </div>
         </div>

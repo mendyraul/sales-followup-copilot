@@ -21,8 +21,7 @@ export function isManualMode(envValue = process.env.SEND_MODE): boolean {
 }
 
 export function isTestMode(envValue = process.env.SEND_MODE): boolean {
-  const mode = normalize(envValue)
-  return mode === 'test' || (mode === '' && envValue != null)
+  return getSendMode(envValue) === 'test'
 }
 
 export function isNonLiveMode(envValue = process.env.SEND_MODE): boolean {

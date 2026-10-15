@@ -76,6 +76,57 @@ describe('createAiProvider', () => {
     expect(draft.provider).toBe('openai');
     expect(draft.subject).toContain('Jordan');
     expect(draft.body).toContain('next step');
+
+    const [requestUrl, requestInit] = fetchImpl.mock.calls[0];
+    expect(requestUrl).toBe('https://api.openai.com/v1/responses');
+    expect(requestInit).toMatchObject({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-key',
+      },
+    });
+
+    expect(JSON.parse(requestInit.body)).toMatchObject({
+      model: 'gpt-4o-mini',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'sales_followup_draft',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['subject', 'body'],
+          },
+        },
+      },
+    });
+  });
+
+  it('defaults blank model config before building the OpenAI request body', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          subject: 'Quick follow-up for Jordan',
+          body: 'Hi Jordan, just circling back with the next step.'
+        })
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      model: '   ',
+      fetchImpl
+    });
+
+    await provider.generateDraft({ leadName: 'Jordan' });
+
+    const [, requestInit] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(requestInit.body)).toMatchObject({
+      model: 'gpt-4o-mini',
+    });
   });
 
   it('falls back to structured output content when output_text is absent', async () => {
@@ -111,6 +162,364 @@ describe('createAiProvider', () => {
     expect(draft.body).toContain('next safe step');
   });
 
+  it('accepts nested structured output when the content text is present but the type field is omitted', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, this reviewed draft should still parse even without a content type.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('without a content type');
+  });
+
+  it('falls back to structured output content when top-level output_text is only whitespace', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: '   \n  ',
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, this nested output should still drive the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('nested output should still drive');
+  });
+
+  it('skips malformed candidates when a later structured output contains valid JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: '{not valid json',
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, the second output block still provides the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('second output block');
+  });
+
+  it('skips parsed candidates with blank required fields when a later output contains a valid draft', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          subject: 'Quick follow-up for Jordan',
+          body: '   '
+        }),
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, this later reviewed draft should still win.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('later reviewed draft should still win');
+  });
+
+  it('skips schema-style placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          '{"subject":"string","body":"string"}',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore placeholder schema values and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore placeholder schema values');
+  });
+
+  it('skips candidates when either required field is still a schema placeholder token', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          JSON.stringify({
+            subject: 'string',
+            body: 'Hi Jordan, this example body should not be accepted as the reviewed draft.'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should keep scanning until both required fields contain real reviewed text.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('both required fields contain real reviewed text');
+  });
+
+  it('skips angle-bracket placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '<subject line>',
+            body: '<body copy>'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore angle-bracket template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore angle-bracket template placeholders');
+  });
+
+  it('skips moustache placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '{{subject}}',
+            body: '{{body}}'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore moustache template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore moustache template placeholders');
+  });
+
+  it('skips square-bracket placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '[subject]',
+            body: '[body]'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore square-bracket template placeholders and keep the real reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore square-bracket template placeholders');
+  });
+
+  it('skips descriptive square-bracket placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: '[subject line]',
+            body: '[body copy]'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore descriptive square-bracket placeholders and keep the reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore descriptive square-bracket placeholders');
+  });
+
+  it('skips field-name placeholder drafts when a later reviewed draft contains the real content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Template example first:',
+          JSON.stringify({
+            subject: 'subject',
+            body: 'body'
+          }),
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should ignore field-name placeholders and keep the reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('ignore field-name placeholders');
+  });
+
   it('accepts JSON wrapped in markdown code fences', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -133,6 +542,326 @@ describe('createAiProvider', () => {
     expect(draft.provider).toBe('openai');
     expect(draft.subject).toContain('Jordan');
     expect(draft.body).toContain('reviewed next step');
+  });
+
+  it('accepts fenced JSON even when the model adds a short prose preamble', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the reviewed draft:',
+          '```json',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the fenced JSON should still be extracted after a short preamble.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('fenced JSON should still be extracted');
+  });
+
+  it('accepts fenced JSON when the model uses a non-json fence label', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the reviewed draft:',
+          '```javascript',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should still recover reviewed JSON from a non-json fence label.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('non-json fence label');
+  });
+
+  it('skips an earlier fenced block when a later fenced block contains the valid reviewed draft', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Here is the schema example first:',
+          '```json',
+          '{"subject": "", "body": ""}',
+          '```',
+          'Reviewed draft below:',
+          '```json',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the later fenced block should still provide the reviewed draft.'
+          }),
+          '```'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('later fenced block should still provide');
+  });
+
+  it('accepts plain JSON wrapped in short prose without markdown fences', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, plain JSON should still parse after a short prose wrapper.'
+          }),
+          'Let me know if you want another version.'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('plain JSON should still parse');
+  });
+
+  it('falls back to later plain JSON when an earlier fenced block is only a bad schema example', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          '```json',
+          '{"subject": "", "body": ""}',
+          '```',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should keep scanning after the fenced example and use this reviewed draft.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('keep scanning after the fenced example');
+  });
+
+  it('falls back to later plain JSON when an earlier fenced example contains unmatched JSON braces', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Schema example first:',
+          '```json',
+          '{"subject":"example"',
+          '```',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should recover even after a broken fenced JSON example.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('recover even after a broken fenced JSON example');
+  });
+
+  it('parses plain JSON wrapped in prose when the draft body contains braces and quoted snippets', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Use this reviewed draft:',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body:
+              'Hi Jordan, you mentioned the internal note `{"owner":"ops"}` and asked for the exact phrase "next best step" in the recap.'
+          }),
+          'Keep the tone consultative.'
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('{"owner":"ops"}');
+    expect(draft.body).toContain('"next best step"');
+  });
+
+  it('recovers when a malformed plain-JSON example leaves the earlier string unterminated before a later valid draft', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: [
+          'Bad schema example first:',
+          '{"subject":"example","body":"missing the closing quote before the brace}',
+          'Reviewed draft below.',
+          JSON.stringify({
+            subject: 'Quick follow-up for Jordan',
+            body: 'Hi Jordan, the parser should recover even after a malformed plain JSON example earlier in the response.'
+          })
+        ].join('\n')
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('recover even after a malformed plain JSON example');
+  });
+
+  it('ignores malformed non-string top-level output_text values when later structured content is valid', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: { text: 'not a usable string payload' },
+        output: [
+          {
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  subject: 'Quick follow-up for Jordan',
+                  body: 'Hi Jordan, nested structured output should still recover the reviewed draft.'
+                })
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    const draft = await provider.generateDraft({ leadName: 'Jordan' });
+
+    expect(draft.provider).toBe('openai');
+    expect(draft.subject).toContain('Jordan');
+    expect(draft.body).toContain('nested structured output should still recover');
+  });
+
+  it('surfaces upstream OpenAI status failures', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: { message: 'temporary overload' } })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    await expect(provider.generateDraft({ leadName: 'Jordan' })).rejects.toThrow(
+      'OpenAI draft generation failed with status 503'
+    );
+  });
+
+  it('rejects OpenAI payloads that never include draft output text', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [
+          {
+            content: [
+              {
+                type: 'reasoning',
+                text: 'Thinking about the best follow-up...'
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const provider = createAiProvider({
+      provider: 'openai',
+      apiKey: 'test-key',
+      fetchImpl
+    });
+
+    await expect(provider.generateDraft({ leadName: 'Jordan' })).rejects.toThrow(
+      'OpenAI draft generation returned no output_text payload.'
+    );
   });
 
   it('rejects whitespace-only OpenAI draft payloads', async () => {
