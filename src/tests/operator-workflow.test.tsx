@@ -129,6 +129,15 @@ describe('operator workflow regression', () => {
     expect(html).toContain('Manual QA checklist');
     expect(html).toContain('Checklist coverage');
     expect(html).toContain('Safety mode');
+    expect(html).toContain('First follow-up draft preview');
+    expect(html).toContain('Draft QA prompts');
+    expect(html).toContain('Review context');
+    expect(html).toContain('manual review');
+    expect(html).toContain('mock-provider: deterministic local draft only');
+    expect(html).toContain('Following up with Jordan Lee at Northwind');
+    expect(html).toContain('Objective: sending a concise recap and booking a short review');
+    expect(html).toContain('Context sources: recentContext');
+    expect(html).toContain('Missing inputs: leadSource');
     expect(html).toContain('Recent audit log');
     expect(html).toContain('Audit coverage');
     expect(html).toContain('Lead timeline');
@@ -163,5 +172,6 @@ describe('operator workflow regression', () => {
     expect(html).toContain('manual');
     expect(html).toContain('Lead events: 2');
     expect(html).toContain('Feedback events: 1');
+    expect(html).toContain('Review context source count: 1');
   });
 });
