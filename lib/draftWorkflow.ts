@@ -239,10 +239,9 @@ export function currentDraftRevision(records: FollowUpDraftRecord[], draftId: st
     }
 
     const next = byId.get(cursor.supersededById)
-    if (!next || visited.has(cursor.id) || visited.has(next.id)) {
+    if (!next) {
       break
     }
-    visited.add(cursor.id)
     cursor = next
   }
 
