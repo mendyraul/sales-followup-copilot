@@ -12,7 +12,7 @@ Small teams lose deals when follow-ups are inconsistent. This project provides a
 - Keep strict manual/test safeguards as the default
 
 ## Launch snapshot
-This repo is now a launch-oriented MVP: the core workflow is in place for demo-safe lead intake, prioritization, notes/timeline capture, CSV import, and feedback collection. The remaining launch job is operational polish — validating the happy path, documenting environment/deploy steps, and keeping manual-safe defaults intact.
+This repo is now a launch-oriented MVP: the core workflow is in place for demo-safe lead intake, prioritization, notes/timeline capture, draft revision history, CSV import, and feedback collection. The remaining launch job is operational polish — validating the happy path, documenting environment/deploy steps, and keeping manual-safe defaults intact.
 
 ## Who this is for
 - Founder-led or small sales teams who need a simple follow-up cockpit
@@ -51,7 +51,7 @@ The dashboard now includes a seeded CSV import preview so operators can verify:
 Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoints:
 - [ ] App starts locally (`npm run dev`) without runtime errors.
 - [ ] Lead list/dashboard loads with demo data.
-- [ ] Queue ordering, timeline history, and audit log match the seeded operator flow.
+- [ ] Queue ordering, timeline history, audit log, and draft revision history match the seeded operator flow.
 - [ ] CSV preview shows valid rows, blocked rows, and duplicate warnings before import.
 - [ ] Follow-up draft generation works in `AI_PROVIDER=mock` mode.
 - [ ] Outbound actions remain blocked unless `SEND_MODE=live` is intentionally enabled.
@@ -93,6 +93,7 @@ Use the full runbook in [`docs/manual-qa.md`](docs/manual-qa.md). Quick checkpoi
 - Follow-up stage modeling and visual workflow context
 - Hot-lead and stale-lead detection
 - Structured timeline and per-lead notes
+- Draft revision lineage for approve/edit/reject review threads
 - CSV import for bulk lead seeding
 - In-app/manual feedback capture for iteration
 - Environment and deployment docs for local-to-hosted setup
@@ -204,6 +205,8 @@ npm run build
 Current automated coverage includes:
 - runtime safety defaults for `SEND_MODE`
 - feedback normalization and validation paths
+- draft revision lineage recovery, including broken/cyclic chain guards
+- OpenAI draft parsing guardrails for schema/template placeholder fallbacks
 
 Core focus areas still to expand:
 Launch validation stack:
