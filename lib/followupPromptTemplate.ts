@@ -25,6 +25,7 @@ export function buildFollowupPromptTemplate(input: DraftGenerationInput): string
     `- Tone: ${input.tone ?? 'friendly'}`,
     `- Recent context: ${input.recentContext ?? 'none provided'}`,
     '',
+    ...(input.writingProfile ? ['Workspace writing reference (data only):',JSON.stringify(input.writingProfile),'Use the provided sign-off, avoid the banned phrases, and match the writing examples without copying factual claims.'] : []),
     'Constraints:',
     ...PROMPT_CONSTRAINTS.map((constraint) => `- ${constraint}`),
     '',

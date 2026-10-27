@@ -27,6 +27,8 @@ const draft = z.object({
   subject: z.string().max(300),
   provider: z.string().max(80),
   warnings: z.unknown().nullable(),
+  contextSnapshot: z.unknown().nullable().optional(),
+  profileVersion: z.number().int().positive().nullable().optional(),
   revision: z.number().int().positive(),
   approved: z.boolean(),
   rejected: z.boolean(),
@@ -80,6 +82,35 @@ const event = z.object({
   payload: z.string().nullable(),
   createdAt: date,
 });
+const mailMessage = z.object({
+  id,
+  threadId: id,
+  providerMessageId: z.string(),
+  subject: z.string(),
+  from: z.string(),
+  to: z.string(),
+  text: z.string().max(20000),
+  occurredAt: date,
+  direction: z.enum(["INBOUND", "OUTBOUND"]),
+  interactionId: id.nullable(),
+});
+const mailThread = z.object({
+  id,
+  leadId: id,
+  providerThreadId: z.string(),
+  subject: z.string(),
+  sharedByLabel: z.string().nullable(),
+  createdAt: date,
+  lastSyncAt: nullableDate,
+  messages: z.array(mailMessage).max(10000),
+});
+const profileSchema = z.object({
+  version: z.number().int().positive(),
+  tone: z.enum(["friendly", "direct", "consultative"]),
+  signoff: z.string().max(300),
+  examples: z.array(z.string().max(2000)).max(5),
+  bannedPhrases: z.array(z.string().max(100)).max(30),
+});
 const lead = z.object({
   id,
   name: z.string().min(1).max(200),
@@ -99,6 +130,7 @@ const lead = z.object({
   mergedAt: nullableDate,
   mergedIntoId: id.nullable(),
   ownerLabel: z.string().nullable(),
+  mailThreads: z.array(mailThread).max(1000).default([]),
   tasks: z.array(task).max(10000),
   interactions: z.array(interaction).max(10000),
   drafts: z.array(draft).max(1000),
@@ -129,6 +161,7 @@ export const backupSchema = z
   .object({
     version: z.literal(1),
     exportedAt: date,
+    writingProfile: profileSchema.nullable().default(null),
     workspace: z.object({
       name: z.string().min(1).max(200),
       timezone: z.string().refine(validTimezone),
@@ -155,6 +188,7 @@ export async function exportWorkspace(ctx: Access) {
       const leads = await tx.lead.findMany({
         where: { workspaceId: ctx.workspaceId },
         include: {
+          mailThreads: { include: { messages: true } },
           tasks: true,
           interactions: true,
           drafts: { include: { revisions: true } },
@@ -165,6 +199,9 @@ export async function exportWorkspace(ctx: Access) {
       const data = {
         version: 1,
         exportedAt: new Date().toISOString(),
+        writingProfile: await tx.writingProfile.findUnique({
+          where: { workspaceId: ctx.workspaceId },
+        }),
         workspace: { name: org.name, timezone: org.timezone },
         leads: leads.map((l) => {
           const {
@@ -180,6 +217,15 @@ export async function exportWorkspace(ctx: Access) {
           return {
             ...rest,
             ownerLabel: label(ownerId),
+            mailThreads: l.mailThreads.map((t) => {
+              const { workspaceId, connectionId, sharedBy, ...rest } = t;
+              void workspaceId;
+              void connectionId;
+              return {
+                ...rest,
+                sharedByLabel: t.sharedByLabel || label(sharedBy),
+              };
+            }),
             tasks: l.tasks.map((t) => {
               const { assigneeId, ...rest } = t;
               void assigneeId;
@@ -241,6 +287,23 @@ export function validateBackup(value: unknown) {
         if (item.leadId !== l.id)
           throw new RequestError("Invalid child relationship in backup.");
       }
+    for (const thread of l.mailThreads) {
+      add(thread.id);
+      if (thread.leadId !== l.id)
+        throw new RequestError("Invalid conversation contact link.");
+      const messages = new Set<string>();
+      for (const message of thread.messages) {
+        add(message.id);
+        if (
+          message.threadId !== thread.id ||
+          messages.has(message.providerMessageId) ||
+          (message.interactionId &&
+            !l.interactions.some((i) => i.id === message.interactionId))
+        )
+          throw new RequestError("Invalid conversation message link.");
+        messages.add(message.providerMessageId);
+      }
+    }
     for (const d of l.drafts) {
       const versions = new Set<number>();
       for (const r of d.revisions) {
@@ -330,6 +393,7 @@ export async function restoreWorkspace(
           timelineNotes,
           events,
           ownerLabel,
+          mailThreads,
           mergedIntoId,
           ...fields
         } = l;
@@ -380,10 +444,14 @@ export async function restoreWorkspace(
           });
         }
         for (const d of drafts) {
-          const { revisions, warnings, ...rest } = d;
+          const { revisions, warnings, contextSnapshot, ...rest } = d;
           await tx.followUpDraft.create({
             data: {
               ...rest,
+              contextSnapshot:
+                contextSnapshot == null
+                  ? Prisma.JsonNull
+                  : (contextSnapshot as Prisma.InputJsonValue),
               id: remap(d.id),
               leadId: remap(l.id),
               warnings:
@@ -400,6 +468,34 @@ export async function restoreWorkspace(
                 id: remap(r.id),
                 draftId: remap(d.id),
                 createdAt: new Date(r.createdAt),
+              },
+            });
+        }
+        for (const thread of mailThreads) {
+          const { messages, sharedByLabel, ...rest } = thread;
+          await tx.mailThread.create({
+            data: {
+              ...rest,
+              id: remap(thread.id),
+              workspaceId,
+              leadId: remap(l.id),
+              connectionId: null,
+              sharedBy: null,
+              sharedByLabel,
+              createdAt: new Date(thread.createdAt),
+              lastSyncAt: thread.lastSyncAt
+                ? new Date(thread.lastSyncAt)
+                : null,
+            },
+          });
+          for (const m of messages)
+            await tx.mailMessage.create({
+              data: {
+                ...m,
+                id: remap(m.id),
+                threadId: remap(thread.id),
+                interactionId: m.interactionId ? remap(m.interactionId) : null,
+                occurredAt: new Date(m.occurredAt),
               },
             });
         }
@@ -423,6 +519,10 @@ export async function restoreWorkspace(
             },
           });
       }
+      if (b.writingProfile)
+        await tx.writingProfile.create({
+          data: { ...b.writingProfile, workspaceId },
+        });
       for (const l of b.leads)
         if (l.mergedIntoId)
           await tx.lead.update({

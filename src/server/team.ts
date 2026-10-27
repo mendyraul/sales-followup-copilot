@@ -138,6 +138,11 @@ export async function unassignRemovedMember(
   userId: string,
 ) {
   await db.$transaction(async (tx) => {
+    await tx.gmailConnection.deleteMany({ where: { workspaceId, userId } });
+    await tx.oAuthState.deleteMany({ where: { workspaceId, userId } });
+    await tx.notificationPreference.deleteMany({
+      where: { workspaceId, userId },
+    });
     const leads = await tx.lead.findMany({
       where: { workspaceId, ownerId: userId },
       select: { id: true },

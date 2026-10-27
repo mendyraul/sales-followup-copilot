@@ -120,7 +120,11 @@ test("invited members receive handoffs and removal leaves work unassigned", asyn
       .getByRole("button", { name: "Settings & team", exact: true })
       .click();
     page.once("dialog", (dialog) => dialog.accept());
-    const removal=page.waitForResponse(r=>r.url().endsWith("/api/auth/organization/remove-member")&&r.request().method()==="POST");
+    const removal = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/auth/organization/remove-member") &&
+        r.request().method() === "POST",
+    );
     await page
       .locator("article")
       .filter({ hasText: email })
@@ -143,5 +147,66 @@ test("invited members receive handoffs and removal leaves work unassigned", asyn
         data: { action: "deleteLead", leadId: id, version: lead.version },
       });
     await memberContext.close();
+  }
+});
+
+test("saved writing profiles shape local drafts and keep their source context", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("browser-owner@example.com");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("Browser-test-password-only-123!");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Workspace", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Settings & team", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Preferred tone", exact: true })
+    .selectOption("direct");
+  await page
+    .getByRole("textbox", { name: "Sign-off", exact: true })
+    .fill("Cheers,\nYour consultant");
+  await page
+    .getByLabel("Approved writing examples")
+    .fill("Hi, here is the recap you asked for.");
+  await page.getByLabel("Phrases to avoid").fill("unlock");
+  await page
+    .getByRole("button", { name: "Save writing profile", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText("Writing profile saved.");
+  const name = `Voice ${Date.now()}`;
+  const result = await page.request.post("/api/workspace", {
+    data: { action: "createLead", name, notes: "Needs an onboarding recap." },
+  });
+  const { id } = await result.json();
+  try {
+    await page.reload();
+    await page.getByRole("button").filter({ hasText: name }).click();
+    await page
+      .getByRole("button", { name: "Generate draft", exact: true })
+      .click();
+    await expect(page.getByLabel("Draft body", { exact: true })).toHaveValue(
+      /Cheers,\nYour consultant/,
+    );
+    const data = await (await page.request.get("/api/workspace")).json();
+    const draft = data.leads.find((l: { id: string }) => l.id === id).drafts[0];
+    expect(draft.profileVersion).toBe(data.writingProfile.version);
+    expect(draft.contextSnapshot.sources[0].excerpt).toBe(
+      "Needs an onboarding recap.",
+    );
+  } finally {
+    const data = await (await page.request.get("/api/workspace")).json();
+    const lead = data.leads.find((l: { id: string }) => l.id === id);
+    if (lead)
+      await page.request.post("/api/workspace", {
+        data: { action: "deleteLead", leadId: id, version: lead.version },
+      });
   }
 });

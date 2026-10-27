@@ -10,6 +10,15 @@ import {
   type Notice,
   type Preferences,
 } from "./team-settings";
+import {
+  WritingSettings,
+  InboxSettings,
+  LeadInbox,
+  DraftSources,
+  type Profile,
+  type InboxStatus,
+  type MailThread,
+} from "./inbox-writing";
 import { WorkspaceBar } from "./workspace-bar";
 import React, {
   FormEvent,
@@ -40,6 +49,7 @@ type Draft = {
   }[];
 };
 type Lead = {
+  mailThreads: MailThread[];
   ownerId: string | null;
   version: number;
   lastContactedAt: string | null;
@@ -66,12 +76,15 @@ type Lead = {
   }[];
 };
 type Workspace = {
+  writingProfile: Profile;
+  inbox: InboxStatus;
   members: Member[];
   notifications: Notice[];
   preferences: Preferences;
-  capabilities: { smtp: boolean };
+  capabilities: { smtp: boolean; gmail: boolean };
   worker: {
-    online:boolean; seenAt: string;
+    online: boolean;
+    seenAt: string;
     successAt: string | null;
     errorCode: string | null;
   } | null;
@@ -349,16 +362,30 @@ export default function HomePage() {
             </button>
           </nav>
           {tab === "settings" && (
-            <TeamSettings
-              workspace={data.workspace}
-              settings={data.settings}
-              members={data.members}
-              preferences={data.preferences}
-              capabilities={data.capabilities}
-              worker={data.worker}
-              mutate={mutate}
-              busy={busy}
-            />
+            <div className="detail">
+              <TeamSettings
+                workspace={data.workspace}
+                settings={data.settings}
+                members={data.members}
+                preferences={data.preferences}
+                capabilities={data.capabilities}
+                worker={data.worker}
+                mutate={mutate}
+                busy={busy}
+              />
+              <WritingSettings
+                profile={data.writingProfile}
+                owner={data.workspace.role === "owner"}
+                mutate={mutate}
+                busy={busy}
+              />
+              <InboxSettings
+                status={data.inbox}
+                enabled={data.capabilities.gmail}
+                demo={data.workspace.demo}
+                onRefresh={refresh}
+              />
+            </div>
           )}
           {tab === "notifications" && (
             <Notifications
@@ -587,12 +614,23 @@ export default function HomePage() {
                       busy={busy}
                       mutate={mutate}
                     />
+                    <LeadInbox
+                      key={lead.id}
+                      leadId={lead.id}
+                      threads={lead.mailThreads}
+                      connected={!!data.inbox}
+                      onRefresh={refresh}
+                    />
                     <section className="panel">
                       <p className="eyebrow">THE NEXT CONVERSATION</p>
                       <h2>Follow-up drafts</h2>
                       <p className="muted">
-                        Provider: {data.mode.provider}. Every draft needs your
-                        review. Approval saves a decision; sending is disabled.
+                        Provider:{" "}
+                        {data.mode.provider === "mock"
+                          ? "Local template"
+                          : data.mode.provider}
+                        . Every draft needs your review. Approval saves a
+                        decision; sending is disabled.
                       </p>
                       <form
                         onSubmit={(e) => {
@@ -602,6 +640,16 @@ export default function HomePage() {
                               action: "generateDraft",
                               leadId: lead.id,
                               ...fields(e.currentTarget),
+                              noteIds: new FormData(e.currentTarget).getAll(
+                                "noteIds",
+                              ),
+                              messageIds: new FormData(e.currentTarget).getAll(
+                                "messageIds",
+                              ),
+                              confirmExternal:
+                                new FormData(e.currentTarget).get(
+                                  "confirmExternal",
+                                ) === "on",
                             },
                             "Draft generated. Review before using.",
                           );
@@ -624,6 +672,12 @@ export default function HomePage() {
                         >
                           Generate draft
                         </button>
+                        <DraftSources
+                          key={lead.id}
+                          notes={lead.timelineNotes}
+                          threads={lead.mailThreads}
+                          external={data.mode.provider === "openai"}
+                        />
                       </form>
                       {lead.drafts.map((d) => (
                         <DraftEditor

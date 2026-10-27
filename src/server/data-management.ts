@@ -71,6 +71,45 @@ export async function mergeLeads(
       data: { status: "CANCELLED", revision: { increment: 1 } },
     });
   }
+  const linkedThreads = await tx.mailThread.findMany({
+    where: { leadId: source.id, workspaceId: ctx.workspaceId },
+    include: { messages: true },
+  });
+  for (const thread of linkedThreads) {
+    const duplicate = thread.connectionId
+      ? await tx.mailThread.findFirst({
+          where: {
+            leadId: target.id,
+            connectionId: thread.connectionId,
+            providerThreadId: thread.providerThreadId,
+          },
+        })
+      : null;
+    if (duplicate) {
+      for (const message of thread.messages) {
+        const existing = await tx.mailMessage.findUnique({
+          where: {
+            threadId_providerMessageId: {
+              threadId: duplicate.id,
+              providerMessageId: message.providerMessageId,
+            },
+          },
+        });
+        if (existing)
+          await tx.mailMessage.delete({ where: { id: message.id } });
+        else
+          await tx.mailMessage.update({
+            where: { id: message.id },
+            data: { threadId: duplicate.id },
+          });
+      }
+      await tx.mailThread.delete({ where: { id: thread.id } });
+    } else
+      await tx.mailThread.update({
+        where: { id: thread.id },
+        data: { leadId: target.id },
+      });
+  }
   // Interaction request keys are per contact; prefix moved keys to preserve identities.
   const interactions = await tx.interaction.findMany({
     where: { leadId: source.id },

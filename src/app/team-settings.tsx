@@ -50,7 +50,8 @@ export function TeamSettings({
   preferences: Preferences;
   capabilities: { smtp: boolean };
   worker: {
-    online:boolean; seenAt: string;
+    online: boolean;
+    seenAt: string;
     successAt: string | null;
     errorCode: string | null;
   } | null;

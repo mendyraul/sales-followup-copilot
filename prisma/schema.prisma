@@ -17,6 +17,7 @@ enum LeadStatus {
 }
 
 model Lead {
+  mailThreads MailThread[]
   normalizedEmail String?
   normalizedPhone String?
   mergedIntoId String?
@@ -53,6 +54,8 @@ model Lead {
 }
 
 model FollowUpDraft {
+  contextSnapshot Json?
+  profileVersion Int?
   id          String   @id @default(cuid())
   leadId      String
   stage       String
@@ -303,4 +306,71 @@ model WorkerHeartbeat {
   seenAt DateTime @default(now())
   successAt DateTime?
   errorCode String?
+}
+
+model WritingProfile {
+  workspaceId String @id
+  version Int @default(1)
+  tone String @default("friendly")
+  signoff String @default("Best,\nSales Follow-Up Copilot")
+  examples Json @default("[]")
+  bannedPhrases Json @default("[]")
+  updatedAt DateTime @updatedAt
+}
+model AiUsage {
+  id String @id
+  count Int @default(0)
+}
+model GmailConnection {
+  id String @id @default(cuid())
+  workspaceId String
+  userId String
+  email String
+  refreshToken String
+  accessToken String?
+  expiresAt DateTime?
+  state String @default("CONNECTED")
+  lastSyncAt DateTime?
+  nextSyncAt DateTime @default(now())
+  errorCode String?
+  threads MailThread[]
+  @@unique([workspaceId,userId])
+}
+model OAuthState {
+  id String @id
+  workspaceId String
+  userId String
+  verifier String
+  expiresAt DateTime
+}
+model MailThread {
+  sharedByLabel String?
+  id String @id @default(cuid())
+  workspaceId String
+  leadId String
+  connectionId String?
+  providerThreadId String
+  subject String
+  sharedBy String?
+  createdAt DateTime @default(now())
+  lastSyncAt DateTime?
+  connection GmailConnection? @relation(fields:[connectionId],references:[id],onDelete:SetNull)
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  messages MailMessage[]
+  @@unique([connectionId,providerThreadId,leadId])
+  @@index([workspaceId,leadId])
+}
+model MailMessage {
+  id String @id @default(cuid())
+  threadId String
+  providerMessageId String
+  subject String
+  from String
+  to String
+  text String
+  occurredAt DateTime
+  direction String
+  interactionId String?
+  thread MailThread @relation(fields:[threadId],references:[id],onDelete:Cascade)
+  @@unique([threadId,providerMessageId])
 }

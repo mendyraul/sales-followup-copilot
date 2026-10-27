@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 if (existsSync(".env")) process.loadEnvFile(".env");
 const { PgBoss } = await import("pg-boss");
 const { db } = await import("../src/server/db");
+const { syncDueGmail } = await import("../src/server/gmail");
 const { reconcileReminders } = await import("../src/server/reminders");
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required.");
 const boss = new PgBoss(process.env.DATABASE_URL);
@@ -22,6 +23,7 @@ await boss.schedule("follow-through-tick", "* * * * *");
 await boss.work("follow-through-tick", async () => {
   try {
     await reconcileReminders();
+    await syncDueGmail();
     await db.workerHeartbeat.upsert({
       where: { id: "main" },
       update: { seenAt: new Date(), successAt: new Date(), errorCode: null },

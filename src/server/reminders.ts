@@ -279,4 +279,18 @@ export async function reconcileReminders(now = new Date(), deliver?: Delivery) {
   }
   if (smtpConfigured() || deliver) await deliverNotifications(now, deliver);
 }
-export async function workerStatus(client:Prisma.TransactionClient=db){const row=await client.workerHeartbeat.findUnique({where:{id:'main'}});return row?{...row,online:Date.now()-row.seenAt.getTime()<120000&&!!row.successAt&&Date.now()-row.successAt.getTime()<300000&&!row.errorCode}:null;}
+export async function workerStatus(client: Prisma.TransactionClient = db) {
+  const row = await client.workerHeartbeat.findUnique({
+    where: { id: "main" },
+  });
+  return row
+    ? {
+        ...row,
+        online:
+          Date.now() - row.seenAt.getTime() < 120000 &&
+          !!row.successAt &&
+          Date.now() - row.successAt.getTime() < 300000 &&
+          !row.errorCode,
+      }
+    : null;
+}
