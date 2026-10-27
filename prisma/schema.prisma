@@ -267,3 +267,40 @@ model Interaction {
   @@unique([leadId,requestKey])
   @@index([leadId,occurredAt])
 }
+
+model Notification {
+  id String @id @default(cuid())
+  workspaceId String
+  userId String
+  leadId String?
+  taskId String?
+  taskRevision Int?
+  kind String
+  title String
+  dedupeKey String @unique
+  createdAt DateTime @default(now())
+  readAt DateTime?
+  emailState String @default("DISABLED")
+  attempts Int @default(0)
+  nextAttemptAt DateTime?
+  leaseAt DateTime?
+  sentAt DateTime?
+  errorCode String?
+  @@index([workspaceId,userId,createdAt])
+  @@index([emailState,nextAttemptAt])
+}
+model NotificationPreference {
+  id String @id @default(cuid())
+  workspaceId String
+  userId String
+  emailEnabled Boolean @default(false)
+  digestEnabled Boolean @default(false)
+  digestHour Int @default(9)
+  @@unique([workspaceId,userId])
+}
+model WorkerHeartbeat {
+  id String @id
+  seenAt DateTime @default(now())
+  successAt DateTime?
+  errorCode String?
+}

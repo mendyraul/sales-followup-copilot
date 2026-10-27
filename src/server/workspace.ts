@@ -1,3 +1,6 @@
+import {workerStatus} from "./reminders";
+import { teamCommand } from "./team";
+import { smtpConfigured } from "./mail";
 import { dataCommand } from "./data-management";
 import { expectedRevision } from "./followups";
 import { followupCommand } from "./followups";
@@ -35,6 +38,34 @@ export async function snapshot(ctx: Access) {
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
+      members: await tx.member.findMany({
+        where: { organizationId: ctx.workspaceId },
+        select: {
+          id: true,
+          userId: true,
+          role: true,
+          user: { select: { name: true, email: true } },
+        },
+      }),
+      notifications: ctx.userId
+        ? await tx.notification.findMany({
+            where: { workspaceId: ctx.workspaceId, userId: ctx.userId },
+            orderBy: { createdAt: "desc" },
+            take: 100,
+          })
+        : [],
+      preferences: ctx.userId
+        ? await tx.notificationPreference.findUnique({
+            where: {
+              workspaceId_userId: {
+                workspaceId: ctx.workspaceId,
+                userId: ctx.userId,
+              },
+            },
+          })
+        : null,
+      capabilities: { smtp: smtpConfigured() },
+      worker: await workerStatus(tx),
       settings: await tx.organization.findUnique({
         where: { id: ctx.workspaceId },
         select: { timezone: true, name: true },
@@ -128,6 +159,16 @@ export async function command(value: unknown, ctx: Access) {
     ].includes(action)
   )
     return dataCommand(input, ctx);
+  if (
+    [
+      "saveWorkspaceSettings",
+      "saveNotificationPreferences",
+      "markNotificationRead",
+      "retryNotificationEmail",
+      "assignLead",
+    ].includes(action)
+  )
+    return teamCommand(input, ctx);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {

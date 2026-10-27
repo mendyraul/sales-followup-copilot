@@ -20,7 +20,10 @@ export default function AcceptInvitation() {
               if (!invitationId) throw new Error("Invitation link is missing.");
               const signup = await fetch("/api/auth/sign-up/email", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Invitation-ID": invitationId,
+                },
                 body: JSON.stringify(data),
               });
               if (!signup.ok) {
