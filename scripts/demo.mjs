@@ -5,6 +5,7 @@ if (!existsSync(".env")) copyFileSync(".env.example", ".env");
 process.loadEnvFile(".env");
 // Demo runs never make paid provider calls, even if an operator configured a key.
 process.env.AI_PROVIDER = "mock";
+process.env.APP_MODE = "demo";
 process.env.SEND_MODE = "manual";
 const port = Number(process.env.PORT || 3115);
 function run(cmd, args) {

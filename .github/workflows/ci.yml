@@ -29,6 +29,9 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sales_followup_test
+      APP_MODE: demo
+      APP_URL: http://127.0.0.1:3120
+      BETTER_AUTH_SECRET: ci-only-not-a-real-secret-32-characters
       AI_PROVIDER: mock
       SEND_MODE: manual
       NEXT_TELEMETRY_DISABLED: "1"
@@ -42,9 +45,9 @@ jobs:
       - run: npm audit --audit-level=moderate
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
       - run: npm run db:migrate
       - run: npm run db:seed
+      - run: npm test
       - run: node scripts/verify-legacy-migration.mjs
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sales_followup_upgrade_test

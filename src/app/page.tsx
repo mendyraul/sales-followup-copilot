@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { WorkspaceBar } from "./workspace-bar";
 import React, {
   FormEvent,
   useCallback,
@@ -49,6 +50,7 @@ type Lead = {
   }[];
 };
 type Workspace = {
+  workspace: { id: string; role: string; userId: string | null; demo: boolean };
   leads: Lead[];
   audit: { id: string; action: string; createdAt: string; entityId: string }[];
   feedback: {
@@ -80,6 +82,10 @@ export default function HomePage() {
   const refresh = useCallback(async () => {
     const response = await fetch("/api/workspace", { cache: "no-store" });
     const body = await response.json();
+    if (response.status === 401) {
+      window.location.assign("/login");
+      throw new Error("Sign in to continue.");
+    }
     if (!response.ok)
       throw new Error(body.error || "Unable to load workspace.");
     setData(body);
@@ -173,13 +179,14 @@ export default function HomePage() {
   }
   return (
     <main>
+      {data && <WorkspaceBar activeId={data.workspace.id} />}
       <header className="topbar">
         <Link className="brand" href="/">
           <span className="brand-icon">↗</span> FOLLOW THROUGH
           <span className="edition">Sales workspace</span>
         </Link>
         <span className="mode">
-          <span /> LOCAL DEMO · SENDING DISABLED
+          <span /> SENDING DISABLED
         </span>
       </header>
       <section className="intro">

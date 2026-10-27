@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { command, snapshot } from "../../../server/workspace";
 import { RequestError } from "../../../server/validation";
+import { access } from "../../../server/access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 function failure(error: unknown) {
@@ -39,23 +40,10 @@ function failure(error: unknown) {
     { status: 503 },
   );
 }
-function localHost(request: NextRequest) {
-  const host = request.headers.get("host");
-  if (!host) throw new RequestError("A local Host header is required.", 403);
-  let url: URL;
-  try {
-    url = new URL(`http://${host}`);
-  } catch {
-    throw new RequestError("Invalid local Host header.", 403);
-  }
-  if (!["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))
-    throw new RequestError("This demo only accepts local requests.", 403);
-  return host.toLowerCase();
-}
 export async function GET(request: NextRequest) {
   try {
-    localHost(request);
-    return NextResponse.json(await snapshot(), {
+    const ctx = await access(request);
+    return NextResponse.json(await snapshot(ctx), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
@@ -64,23 +52,7 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request: NextRequest) {
   try {
-    const host = localHost(request);
-    const origin = request.headers.get("origin");
-    // Next may normalize request.url to its internal listen address. The browser
-    // origin must match the actual incoming Host, not that internal address.
-    if (origin) {
-      let parsed: URL;
-      try {
-        parsed = new URL(origin);
-      } catch {
-        throw new RequestError("Invalid request origin.", 403);
-      }
-      if (
-        parsed.host.toLowerCase() !== host ||
-        parsed.protocol !== new URL(request.url).protocol
-      )
-        throw new RequestError("Cross-origin changes are blocked.", 403);
-    }
+    const ctx = await access(request);
     if (!request.headers.get("content-type")?.startsWith("application/json"))
       throw new RequestError("Send application/json.", 415);
     const body = await request.text();
@@ -92,7 +64,7 @@ export async function POST(request: NextRequest) {
     } catch {
       throw new RequestError("Invalid JSON.");
     }
-    return NextResponse.json(await command(input));
+    return NextResponse.json(await command(input, ctx));
   } catch (error) {
     return failure(error);
   }
