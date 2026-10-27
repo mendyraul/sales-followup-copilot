@@ -1,14 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
+import type { Access } from "./access";
 import { bool, leadFields, object, RequestError, text } from "./validation";
 import { canTransition, type LeadStatus as DomainStatus } from "../domain/lead";
 import { parseLeadCsvPreview } from "../domain/csv-import";
 import { generateFirstFollowupDraft } from "../../lib/firstFollowupDraft";
 
-export async function snapshot() {
+export async function snapshot(ctx: Access) {
   return db.$transaction(
     async (tx) => ({
       leads: await tx.lead.findMany({
+        where: { workspaceId: ctx.workspaceId },
         orderBy: { createdAt: "asc" },
         include: {
           drafts: {
@@ -20,13 +22,21 @@ export async function snapshot() {
         },
       }),
       audit: await tx.auditLog.findMany({
+        where: { workspaceId: ctx.workspaceId },
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
       feedback: await tx.feedbackEntry.findMany({
+        where: { workspaceId: ctx.workspaceId },
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
+      workspace: {
+        id: ctx.workspaceId,
+        role: ctx.role,
+        userId: ctx.userId,
+        demo: ctx.demo,
+      },
       mode: {
         sending: "disabled",
         provider: process.env.AI_PROVIDER || "mock",
@@ -38,17 +48,31 @@ export async function snapshot() {
 
 function audit(
   tx: Prisma.TransactionClient,
+  ctx: Access,
   action: string,
   entityType: string,
   entityId: string,
   payload: unknown,
 ) {
   return tx.auditLog.create({
-    data: { action, entityType, entityId, payload: JSON.stringify(payload) },
+    data: {
+      workspaceId: ctx.workspaceId,
+      actorId: ctx.userId,
+      action,
+      entityType,
+      entityId,
+      payload: JSON.stringify(payload),
+    },
   });
 }
-async function requireLead(tx: Prisma.TransactionClient, id: string) {
-  const lead = await tx.lead.findUnique({ where: { id } });
+async function requireLead(
+  tx: Prisma.TransactionClient,
+  ctx: Access,
+  id: string,
+) {
+  const lead = await tx.lead.findFirst({
+    where: { id, workspaceId: ctx.workspaceId },
+  });
   if (!lead)
     throw new RequestError("Lead not found. Refresh the workspace.", 404);
   return lead;
@@ -69,17 +93,21 @@ async function event(
     data: { leadId, eventType, payload: JSON.stringify(payload) },
   });
 }
-export async function command(value: unknown) {
+export async function command(value: unknown, ctx: Access) {
   const input = object(value);
   const action = text(input.action, "Action", 40);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {
       const lead = await tx.lead.create({
-        data: { ...fields, hotLead: fields.status === "HOT" },
+        data: {
+          ...fields,
+          workspaceId: ctx.workspaceId,
+          hotLead: fields.status === "HOT",
+        },
       });
       await event(tx, lead.id, "CREATED", { name: lead.name });
-      await audit(tx, "lead.created", "lead", lead.id, fields);
+      await audit(tx, ctx, "lead.created", "lead", lead.id, fields);
       return { id: lead.id };
     });
   }
@@ -100,13 +128,21 @@ export async function command(value: unknown) {
     return db.$transaction(async (tx) => {
       for (const row of preview.validRows) {
         const fields = leadFields({ ...row, status: row.status.toUpperCase() });
-        if (await tx.lead.findFirst({ where: { email: fields.email } }))
+        if (
+          await tx.lead.findFirst({
+            where: { email: fields.email, workspaceId: ctx.workspaceId },
+          })
+        )
           throw new RequestError(`Email already exists: ${row.email}`, 409);
         const lead = await tx.lead.create({
-          data: { ...fields, hotLead: fields.status === "HOT" },
+          data: {
+            ...fields,
+            workspaceId: ctx.workspaceId,
+            hotLead: fields.status === "HOT",
+          },
         });
         await event(tx, lead.id, "CREATED", { source: "csv" });
-        await audit(tx, "lead.imported", "lead", lead.id, fields);
+        await audit(tx, ctx, "lead.imported", "lead", lead.id, fields);
       }
       return { imported: preview.validRows.length };
     });
@@ -122,6 +158,7 @@ export async function command(value: unknown) {
       throw new RequestError("Rating must be an integer from 1 to 5.");
     const leadId = text(input.leadId, "Lead", 100, true) || null;
     const data = {
+      workspaceId: ctx.workspaceId,
       rating: Number(input.rating),
       leadId,
       category: text(input.category, "Category", 80, true),
@@ -137,16 +174,16 @@ export async function command(value: unknown) {
           : bool(input.contactRequested, "Contact requested"),
     };
     return db.$transaction(async (tx) => {
-      if (leadId) await requireLead(tx, leadId);
+      if (leadId) await requireLead(tx, ctx, leadId);
       const feedback = await tx.feedbackEntry.create({ data });
-      await audit(tx, "feedback.created", "feedback", feedback.id, data);
+      await audit(tx, ctx, "feedback.created", "feedback", feedback.id, data);
       return { id: feedback.id };
     });
   }
   const id = text(input.leadId, "Lead", 100);
   if (action === "generateDraft") {
-    const lead = await db.lead.findUnique({
-      where: { id },
+    const lead = await db.lead.findFirst({
+      where: { id, workspaceId: ctx.workspaceId },
       include: { timelineNotes: { orderBy: { createdAt: "desc" }, take: 1 } },
     });
     if (!lead) throw new RequestError("Lead not found.", 404);
@@ -170,7 +207,7 @@ export async function command(value: unknown) {
       },
     );
     return db.$transaction(async (tx) => {
-      const current = await requireLead(tx, id);
+      const current = await requireLead(tx, ctx, id);
       if (current.updatedAt.getTime() !== lead.updatedAt.getTime())
         throw new RequestError(
           "Lead changed while generating. Please try again.",
@@ -198,7 +235,7 @@ export async function command(value: unknown) {
         draftId: draft.id,
         provider: result.provider,
       });
-      await audit(tx, "draft.generated", "draft", draft.id, {
+      await audit(tx, ctx, "draft.generated", "draft", draft.id, {
         leadId: id,
         provider: result.provider,
       });
@@ -207,7 +244,7 @@ export async function command(value: unknown) {
   }
   return db.$transaction(
     async (tx) => {
-      const lead = await requireLead(tx, id);
+      const lead = await requireLead(tx, ctx, id);
       if (action === "updateLead") {
         const fields = leadFields(input);
         if (
@@ -223,7 +260,11 @@ export async function command(value: unknown) {
           );
         await tx.lead.update({
           where: { id },
-          data: { ...fields, hotLead: fields.status === "HOT" },
+          data: {
+            ...fields,
+            workspaceId: ctx.workspaceId,
+            hotLead: fields.status === "HOT",
+          },
         });
         await event(
           tx,
@@ -231,12 +272,12 @@ export async function command(value: unknown) {
           fields.status !== lead.status ? "STATUS_CHANGED" : "CUSTOM",
           { from: lead.status, to: fields.status, summary: "Lead updated" },
         );
-        await audit(tx, "lead.updated", "lead", id, {
+        await audit(tx, ctx, "lead.updated", "lead", id, {
           before: lead,
           after: fields,
         });
       } else if (action === "deleteLead") {
-        await audit(tx, "lead.deleted", "lead", id, lead);
+        await audit(tx, ctx, "lead.deleted", "lead", id, lead);
         await tx.lead.delete({ where: { id } });
       } else if (action === "addNote") {
         const body = text(input.body, "Note", 5000);
@@ -246,7 +287,7 @@ export async function command(value: unknown) {
           data: { updatedAt: new Date() },
         });
         await event(tx, id, "NOTE_ADDED", { body });
-        await audit(tx, "note.created", "lead", id, { body });
+        await audit(tx, ctx, "note.created", "lead", id, { body });
       } else if (action === "reviewDraft") {
         const draftId = text(input.draftId, "Draft", 100);
         const decision = text(input.decision, "Decision", 20);
@@ -304,7 +345,7 @@ export async function command(value: unknown) {
           decision === "approved" ? "FOLLOW_UP_APPROVED" : "CUSTOM",
           { draftId, decision },
         );
-        await audit(tx, `draft.${decision}`, "draft", draftId, {
+        await audit(tx, ctx, `draft.${decision}`, "draft", draftId, {
           leadId: id,
           revision: draft.revision + 1,
           sending: "disabled",

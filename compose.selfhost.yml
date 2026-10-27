@@ -1,0 +1,37 @@
+name: follow-through
+x-app: &app
+  image: ${FOLLOW_THROUGH_IMAGE:-ghcr.io/mendyraul/sales-followup-copilot:latest}
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://followthrough:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/followthrough
+    APP_MODE: selfhost
+  depends_on:
+    db:
+      condition: service_healthy
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: followthrough
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: followthrough
+    volumes: [data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U followthrough -d followthrough']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+  migrate:
+    <<: *app
+    command: [npm, run, db:migrate]
+  app:
+    <<: *app
+    restart: unless-stopped
+    ports: ['127.0.0.1:${PORT:-3116}:3000']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+volumes:
+  data:

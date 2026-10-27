@@ -18,7 +18,7 @@ test("operator workflow persists leads, notes, draft revisions and feedback acro
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
-  await expect(page.getByText("LOCAL DEMO · SENDING DISABLED")).toBeVisible();
+  await expect(page.getByText("SENDING DISABLED")).toBeVisible();
   await page.getByRole("button", { name: "+ Add a lead" }).click();
   await page.getByLabel("Name", { exact: true }).fill(name);
   await page
