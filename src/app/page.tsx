@@ -1,971 +1,875 @@
-import React from 'react';
-import { demoAuditLog } from '../data/demoAuditLog';
-import { demoDeploymentChecklist } from '../data/demoDeploymentChecklist';
-import { demoDraftHistory } from '../data/demoDraftHistory';
-import { demoFeedbackEntries } from '../data/demoFeedback';
-import { demoLeads } from '../data/demoLeads';
-import { demoManualQaChecklist } from '../data/demoManualQaChecklist';
-import { demoLeadNotes, demoTimelineEntries } from '../data/demoTimeline';
-import { recentAuditEntries, summarizeAuditCoverage } from '../domain/audit';
-import { parseLeadCsvPreview } from '../domain/csv-import';
-import { summarizeDeploymentChecklist } from '../domain/deployment';
-import { buildDraftThreads, summarizeDraftHistory } from '../domain/draft-history';
-import { buildFeedbackCaptureDrafts, feedbackActionHint, feedbackEscalation, feedbackHotspots, feedbackNeedsAttention, recentFeedback, summarizeFeedback, summarizeFeedbackEscalations } from '../domain/feedback';
-import { listFollowUpStages } from '../domain/followup';
-import { buildDemoFirstFollowupDraft } from '../../lib/firstFollowupDraft';
-import { summarizeManualQaChecklist } from '../domain/manual-qa';
-import { entriesForLead, notePreview, notesForLead, summarizeTimeline } from '../domain/timeline';
-import { listHotLeads } from '../domain/hot-lead';
-import { buildQueue, groupQueueByPriority, type QueuePriority } from '../domain/queue';
+"use client";
+import Link from "next/link";
+import React, {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { allowedTransitions, type LeadStatus } from "../domain/lead";
+import { buildQueue } from "../domain/queue";
+import { parseLeadCsvPreview } from "../domain/csv-import";
 
-const coverage = summarizeAuditCoverage(demoAuditLog);
-const latestEvents = recentAuditEntries(demoAuditLog, 4);
-const queue = buildQueue(demoLeads);
-const deploymentSummary = summarizeDeploymentChecklist(demoDeploymentChecklist);
-const feedbackSummary = summarizeFeedback(demoFeedbackEntries);
-const feedbackEscalationSummary = summarizeFeedbackEscalations(demoFeedbackEntries);
-const latestFeedback = recentFeedback(demoFeedbackEntries);
-const feedbackFollowUps = feedbackNeedsAttention(demoFeedbackEntries);
-const feedbackLeadHotspots = feedbackHotspots(demoFeedbackEntries);
-const feedbackCaptureDrafts = buildFeedbackCaptureDrafts(queue, demoFeedbackEntries);
-const manualQaSummary = summarizeManualQaChecklist(demoManualQaChecklist);
-const timelineSummary = summarizeTimeline(demoTimelineEntries, demoLeadNotes);
-const draftThreads = buildDraftThreads(demoDraftHistory);
-const draftHistorySummary = summarizeDraftHistory(demoDraftHistory);
-const draftPreviewLead = demoLeads.find((lead) => lead.id === 'lead-demo-002') ?? demoLeads[0];
-const draftPreviewNote = notesForLead(demoLeadNotes, draftPreviewLead.id)[0];
-const firstFollowupDraft = buildDemoFirstFollowupDraft({
-  leadName: draftPreviewLead.name,
-  companyName: 'Northwind',
-  recentContext: draftPreviewNote?.body,
-  desiredNextStep: 'sending a concise recap and booking a short review',
-  tone: 'direct'
-});
-const csvPreview = parseLeadCsvPreview(`name,email,phone,source,status
-Avery Smith,avery@example.com,+1-555-0101,Referral,new
-Jordan Lee,jordan@example.com,,Website,contacted
-Pat Rivera,pat@example.com,+1-555-0104,"Partner, East",hot
-Jordan Lee,jordan@example.com,+1-555-0102,,replied
-No Email,,+1-555-0110,Tradeshow,new`);
-const queueGroups = groupQueueByPriority(queue);
-
-const priorityColors = {
-  high: '#b91c1c',
-  medium: '#b45309',
-  low: '#1d4ed8',
-} as const;
-
-const prioritySurface = {
-  high: { border: '#fecaca', background: '#fef2f2', text: '#991b1b' },
-  medium: { border: '#fde68a', background: '#fffbeb', text: '#92400e' },
-  low: { border: '#bfdbfe', background: '#eff6ff', text: '#1d4ed8' },
-} as const;
-
-const laneCopy: Record<QueuePriority, { title: string; subtitle: string; empty: string }> = {
-  high: {
-    title: 'Act now',
-    subtitle: 'Hot or replied leads that need the fastest human follow-up.',
-    empty: 'No urgent leads right now.',
-  },
-  medium: {
-    title: 'Queue next',
-    subtitle: 'Leads that have momentum but can wait behind the urgent lane.',
-    empty: 'No medium-priority leads waiting.',
-  },
-  low: {
-    title: 'Warm up',
-    subtitle: 'Newer opportunities that still need a first touch or light triage.',
-    empty: 'No low-priority leads to warm up.',
-  },
+type Draft = {
+  id: string;
+  subject: string;
+  content: string;
+  provider: string;
+  approved: boolean;
+  rejected: boolean;
+  revision: number;
+  warnings: string[];
+  revisions: {
+    id: string;
+    revision: number;
+    decision: string;
+    subject: string;
+    content: string;
+  }[];
 };
-
-function formatAge(ageHours: number) {
-  if (ageHours >= 24) {
-    const days = Math.floor(ageHours / 24);
-    const hours = Math.round(ageHours % 24);
-    return hours > 0 ? `${days}d ${hours}h ago` : `${days}d ago`;
-  }
-
-  return `${Math.round(ageHours)}h ago`;
-}
-
-function QueueCard({ priority, item }: { priority: QueuePriority; item: (typeof queue)[number] }) {
-  return (
-    <article style={{ background: 'white', padding: 16, borderRadius: 12, border: '1px solid #e5e7eb' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-        <div>
-          <h3 style={{ margin: '0 0 4px 0' }}>{item.lead.name}</h3>
-          <div style={{ color: '#6b7280' }}>{item.lead.email ?? 'No email on file'}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ padding: '4px 10px', borderRadius: 999, background: priorityColors[priority], color: 'white', fontSize: 12, textTransform: 'uppercase' }}>
-            {priority}
-          </span>
-          <span style={{ padding: '4px 10px', borderRadius: 999, background: '#e5e7eb', fontSize: 12, textTransform: 'capitalize' }}>
-            {item.lead.status}
-          </span>
-        </div>
-      </div>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontWeight: 600, color: '#111827' }}>{item.nextAction.label}</div>
-        <div style={{ color: '#6b7280', marginTop: 4 }}>
-          Next step: {item.nextAction.followUpStage} · {item.nextAction.band}
-        </div>
-      </div>
-      <p style={{ margin: '0 0 10px 0', color: '#374151' }}>{item.reason}</p>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#6b7280', fontSize: 14 }}>
-        <span>Priority score: {Math.round(item.score)}</span>
-        <span>Last activity: {formatAge(item.ageHours)}</span>
-      </div>
-    </article>
-  );
+type Lead = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  notes: string | null;
+  status: string;
+  unsubscribed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  drafts: Draft[];
+  timelineNotes: { id: string; body: string; createdAt: string }[];
+  events: {
+    id: string;
+    eventType: string;
+    payload: string | null;
+    createdAt: string;
+  }[];
+};
+type Workspace = {
+  leads: Lead[];
+  audit: { id: string; action: string; createdAt: string; entityId: string }[];
+  feedback: {
+    id: string;
+    rating: number;
+    comments: string;
+    createdAt: string;
+  }[];
+  mode: { sending: string; provider: string };
+};
+const statuses = ["NEW", "CONTACTED", "REPLIED", "HOT", "WON", "LOST"];
+const when = (value: string) => new Date(value).toLocaleString();
+function fields(form: HTMLFormElement) {
+  return Object.fromEntries(new FormData(form));
 }
 
 export default function HomePage() {
-  const stages = listFollowUpStages();
-
+  const [data, setData] = useState<Workspace>();
+  const [selected, setSelected] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  const [tab, setTab] = useState("queue");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [csv, setCsv] = useState(
+    "name,email,phone,source,status\nRiver Studio,hello@river.example,,Referral,new",
+  );
+  const refresh = useCallback(async () => {
+    const response = await fetch("/api/workspace", { cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok)
+      throw new Error(body.error || "Unable to load workspace.");
+    setData(body);
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/workspace", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.error || "Unable to load workspace.");
+        return body;
+      })
+      .then(setData)
+      .catch((e: Error) => {
+        if (!controller.signal.aborted) setError(e.message);
+      });
+    return () => controller.abort();
+  }, []);
+  async function mutate(
+    input: Record<string, unknown>,
+    message: string,
+    onSuccess?: () => void,
+  ) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error || "Change could not be saved.");
+      await refresh();
+      if (input.action === "createLead") {
+        setSelected(body.id);
+        setTab("queue");
+      }
+      setNotice(message);
+      onSuccess?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Change could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const queue = useMemo(
+    () =>
+      buildQueue(
+        (data?.leads ?? [])
+          .filter((l) => !l.unsubscribed)
+          .map((l) => ({
+            ...l,
+            email: l.email ?? undefined,
+            phone: l.phone ?? undefined,
+            status: l.status.toLowerCase() as LeadStatus,
+          })),
+      ),
+    [data],
+  );
+  const visible = (data?.leads ?? []).filter(
+    (l) =>
+      (filter === "ALL" || l.status === filter) &&
+      [l.name, l.email, l.source]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+  const sorted = [...visible].sort(
+    (a, b) =>
+      (queue.findIndex((q) => q.lead.id === a.id) < 0
+        ? 999
+        : queue.findIndex((q) => q.lead.id === a.id)) -
+      (queue.findIndex((q) => q.lead.id === b.id) < 0
+        ? 999
+        : queue.findIndex((q) => q.lead.id === b.id)),
+  );
+  const lead = data?.leads.find((l) => l.id === selected);
+  const preview = useMemo(() => parseLeadCsvPreview(csv), [csv]);
+  function submitLead(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    void mutate(
+      { action: "createLead", ...fields(form) },
+      "Lead created.",
+      () => form.reset(),
+    );
+  }
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', display: 'grid', gap: 24 }}>
-      <section>
-        <h1>Sales Follow-Up Copilot</h1>
-        <p>Manual-safe MVP for managing leads, follow-up drafts, and a visible audit trail.</p>
-      </section>
-
-      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        <MetricCard label="Tracked leads" value={String(demoLeads.length)} helper="Demo data seeded for local QA" />
-        <MetricCard label="Audit events" value={String(coverage.totalEvents)} helper="Lead, draft, feedback, and system actions" />
-        <MetricCard label="Timeline events" value={String(timelineSummary.totalEvents)} helper="Status, draft, and review history by lead" />
-        <MetricCard label="Structured notes" value={String(timelineSummary.totalNotes)} helper="Operator notes attached to active leads" />
-        <MetricCard label="Queue items" value={String(queue.length)} helper="Leads currently needing attention" />
-        <MetricCard label="CSV preview rows" value={String(csvPreview.validRows.length)} helper="Validated leads ready for import" />
-        <MetricCard label="Feedback entries" value={String(feedbackSummary.total)} helper="Operator + QA input captured for iteration" />
-        <MetricCard label="Manual QA checks" value={String(manualQaSummary.totalItems)} helper="Seeded release checklist items" />
-        <MetricCard label="Deploy checkpoints" value={String(deploymentSummary.totalItems)} helper="Release guardrails for manual-safe rollout" />
-        <MetricCard label="Safety mode" value="manual" helper="Live outbound sending still blocked by default" />
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Next action queue</h2>
-          <p style={mutedStyle}>
-            The dashboard now shows the recommended follow-up move for every queued lead so operators can act without reverse-engineering the score.
+    <main>
+      <header className="topbar">
+        <Link className="brand" href="/">
+          <span className="brand-icon">↗</span> FOLLOW THROUGH
+          <span className="edition">Sales workspace</span>
+        </Link>
+        <span className="mode">
+          <span /> LOCAL DEMO · SENDING DISABLED
+        </span>
+      </header>
+      <section className="intro">
+        <div>
+          <p className="eyebrow">A LITTLE CONTEXT. A BETTER CONVERSATION.</p>
+          <h1>Make the next move.</h1>
+          <p className="subtitle">
+            Your leads, their story, and a thoughtful follow-up. All in one
+            place.
           </p>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {(['high', 'medium', 'low'] as const).map((priority) => {
-              const lane = queueGroups[priority];
-              const copy = laneCopy[priority];
-
-              return (
-                <section key={priority} style={{ display: 'grid', gap: 12 }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 4px 0' }}>{copy.title}</h3>
-                    <div style={mutedStyle}>{copy.subtitle}</div>
-                  </div>
-                  {lane.length > 0 ? (
-                    lane.map((item) => <QueueCard key={item.lead.id} priority={priority} item={item} />)
-                  ) : (
-                    <div style={{ ...mutedStyle, padding: 12, border: '1px dashed #d0d7de', borderRadius: 12 }}>{copy.empty}</div>
+        </div>
+        <button
+          onClick={() => {
+            setTab("new");
+            setSelected("");
+          }}
+        >
+          + Add a lead
+        </button>
+      </section>
+      {error && (
+        <div className="alert error" role="alert">
+          {error}{" "}
+          <button
+            className="quiet"
+            onClick={() => {
+              setError("");
+              void refresh().catch((e: Error) => setError(e.message));
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {notice && (
+        <div className="alert success" role="status">
+          {notice}
+        </div>
+      )}
+      {!data ? (
+        <section className="panel empty">
+          <h2>
+            {error ? "Workspace needs attention" : "Opening your workspace…"}
+          </h2>
+          <p>
+            {error
+              ? "Start the database with npm run demo, then retry."
+              : "Loading saved leads and activity."}
+          </p>
+        </section>
+      ) : (
+        <>
+          <section className="metrics" aria-label="Workspace summary">
+            <Metric label="Total leads" value={data.leads.length} />
+            <Metric label="Need a follow-up" value={queue.length} />
+            <Metric
+              label="Hot opportunities"
+              value={
+                data.leads.filter((l) => l.status === "HOT" && !l.unsubscribed)
+                  .length
+              }
+            />
+            <Metric
+              label="Pending drafts"
+              value={
+                data.leads
+                  .flatMap((l) => l.drafts)
+                  .filter((d) => !d.approved && !d.rejected).length
+              }
+            />
+          </section>
+          <nav className="tabs" aria-label="Workspace">
+            <button
+              className={tab === "queue" ? "active" : ""}
+              onClick={() => setTab("queue")}
+            >
+              Lead workspace
+            </button>
+            <button
+              className={tab === "import" ? "active" : ""}
+              onClick={() => setTab("import")}
+            >
+              Import CSV
+            </button>
+            <button
+              className={tab === "activity" ? "active" : ""}
+              onClick={() => setTab("activity")}
+            >
+              Activity & feedback
+            </button>
+          </nav>
+          {tab === "new" && (
+            <section className="panel narrow">
+              <p className="eyebrow">GROW YOUR PIPELINE</p>
+              <h2>Add a lead</h2>
+              <form onSubmit={submitLead}>
+                <LeadFields />
+                <button disabled={busy}>Create lead</button>
+              </form>
+            </section>
+          )}
+          {tab === "queue" && (
+            <section className="workspace">
+              <aside className="panel lead-list">
+                <div className="panel-heading">
+                  <h2>Your pipeline</h2>
+                  <span className="count">{visible.length}</span>
+                </div>
+                <label>
+                  Search leads
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Name, email, or source"
+                  />
+                </label>
+                <label>
+                  Status filter
+                  <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  >
+                    <option value="ALL">All statuses</option>
+                    {statuses.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="lead-items">
+                  {sorted.length === 0 && (
+                    <p className="muted">
+                      No leads match. Add a lead or adjust the filters.
+                    </p>
                   )}
-                </section>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Operator guidance</h2>
-            <ul>
-              <li>Use the action label first; the score only explains urgency.</li>
-              <li>Check the follow-up stage before editing any draft.</li>
-              <li>Keep the queue manual-safe: no automatic outreach is triggered here.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Coverage</h2>
-            <ul>
-              <li>High-priority leads: {queueGroups.high.length}</li>
-              <li>Medium-priority leads: {queueGroups.medium.length}</li>
-              <li>Low-priority leads: {queueGroups.low.length}</li>
-              <li>Reference stages: {stages.length}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '2fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Recent audit log</h2>
-          <p style={mutedStyle}>
-            A lightweight operator-facing timeline for lead changes, draft actions, feedback capture, and runtime guard checks.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {latestEvents.map((entry) => (
-              <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <strong>{entry.summary}</strong>
-                  <span style={pillStyle}>{entry.action}</span>
-                </div>
-                <div style={{ ...mutedStyle, marginTop: 6 }}>
-                  {entry.actor} · {entry.entityType} · {formatTimestamp(entry.createdAt)}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Audit coverage</h2>
-            <ul>
-              <li>Lead events: {coverage.leadEvents}</li>
-              <li>Draft events: {coverage.followUpEvents}</li>
-              <li>Feedback events: {coverage.feedbackEvents}</li>
-              <li>Latest seed event: {formatTimestamp(coverage.latestEventAt ?? '')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Why it matters</h2>
-            <ul>
-              <li>Lets operators explain what changed for each lead.</li>
-              <li>Supports manual QA before any outbound workflow goes live.</li>
-              <li>Preserves safety-mode checks in the same visible trail.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.3fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>First follow-up draft preview</h2>
-          <p style={mutedStyle}>
-            A seeded manual-safe draft preview keeps issue `#11` visible in the dashboard without enabling live delivery. Operators can review subject/body/copy guardrails before touching any send mode.
-          </p>
-          <div style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 16, display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <strong>{draftPreviewLead.name}</strong>
-                <div style={mutedStyle}>{draftPreviewLead.status.toUpperCase()} · {draftPreviewLead.email ?? 'no-email'}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <span style={pillStyle}>{firstFollowupDraft.provider}</span>
-                <span style={warningPillStyle}>manual review</span>
-              </div>
-            </div>
-
-            <div>
-              <div style={{ ...mutedStyle, marginBottom: 4 }}>Subject</div>
-              <div><strong>{firstFollowupDraft.subject}</strong></div>
-            </div>
-
-            <div>
-              <div style={{ ...mutedStyle, marginBottom: 4 }}>Draft body</div>
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: '#f8fafc', borderRadius: 12, padding: 12, border: '1px solid #e2e8f0' }}>
-                {firstFollowupDraft.body}
-              </pre>
-            </div>
-
-            <div>
-              <div style={{ ...mutedStyle, marginBottom: 4 }}>Review checklist</div>
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {firstFollowupDraft.reviewChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <div style={{ ...mutedStyle, marginBottom: 4 }}>Review context</div>
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                <li>Tone: {firstFollowupDraft.reviewContext.tone}</li>
-                <li>
-                  Objective: {firstFollowupDraft.reviewContext.objective}{' '}
-                  <span style={mutedStyle}>({firstFollowupDraft.reviewContext.objectiveSource})</span>
-                </li>
-                <li>
-                  Context sources:{' '}
-                  {firstFollowupDraft.reviewContext.contextSources.length > 0
-                    ? firstFollowupDraft.reviewContext.contextSources.join(', ')
-                    : 'none'}
-                </li>
-                <li>
-                  Missing inputs:{' '}
-                  {firstFollowupDraft.reviewContext.missingFields.length > 0
-                    ? firstFollowupDraft.reviewContext.missingFields.join(', ')
-                    : 'none'}
-                </li>
-              </ul>
-            </div>
-
-            <div style={{ ...mutedStyle }}>
-              <strong>Warning:</strong> {firstFollowupDraft.warnings.join(' · ')}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Draft QA prompts</h2>
-            <ul>
-              <li>Keep the preview in `mock` mode during demos and QA.</li>
-              <li>Confirm the note context carries into the opening sentence.</li>
-              <li>Verify the CTA still matches the requested manual next step.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Coverage</h2>
-            <ul>
-              <li>Seeded lead: {draftPreviewLead.name}</li>
-              <li>Provider: {firstFollowupDraft.provider}</li>
-              <li>Warnings shown: {firstFollowupDraft.warnings.length}</li>
-              <li>Review context source count: {firstFollowupDraft.reviewContext.contextSources.length}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.3fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Lead timeline</h2>
-          <p style={mutedStyle}>
-            Every seeded lead now carries visible notes plus a human-readable activity trail for reviews, demos, and manual QA.
-          </p>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {demoLeads.map((lead) => {
-              const leadNotes = notesForLead(demoLeadNotes, lead.id);
-              const leadEvents = entriesForLead(demoTimelineEntries, lead.id);
-              return (
-                <article key={lead.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <strong>{lead.name}</strong>
-                      <div style={mutedStyle}>{lead.status.toUpperCase()} · {lead.email ?? 'no-email'}</div>
-                    </div>
-                    <span style={pillStyle}>{leadEvents.length} timeline events</span>
-                  </div>
-
-                  <div>
-                    <div style={{ ...mutedStyle, marginBottom: 4 }}>Latest note</div>
-                    <div>{leadNotes[0] ? notePreview(leadNotes[0]) : 'No operator notes yet.'}</div>
-                  </div>
-
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 }}>
-                    {leadEvents.slice(0, 3).map((event) => (
-                      <li key={event.id} style={{ borderTop: '1px solid #d8dee4', paddingTop: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                          <strong>{event.summary}</strong>
-                          <span style={miniPillStyle}>{event.type}</span>
+                  {sorted.map((l) => {
+                    const item = queue.find((q) => q.lead.id === l.id);
+                    return (
+                      <button
+                        key={l.id}
+                        className={`lead-card ${selected === l.id ? "selected" : ""}`}
+                        onClick={() => setSelected(l.id)}
+                      >
+                        <div>
+                          <span className="avatar">
+                            {l.name.slice(0, 2).toUpperCase()}
+                          </span>
+                          <strong>{l.name}</strong>
                         </div>
-                        <div style={{ ...mutedStyle, marginTop: 4 }}>{event.actor} · {formatTimestamp(event.createdAt)}</div>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Timeline summary</h2>
-            <ul>
-              <li>Total timeline events: {timelineSummary.totalEvents}</li>
-              <li>Total structured notes: {timelineSummary.totalNotes}</li>
-              <li>Latest timeline update: {formatTimestamp(timelineSummary.lastUpdatedAt ?? '')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Manual QA prompts</h2>
-            <ul>
-              <li>Confirm each lead card shows a recent note preview.</li>
-              <li>Confirm timeline events stay newest-first per lead.</li>
-              <li>Confirm draft review history appears without enabling live sending.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.3fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Draft review history</h2>
-          <p style={mutedStyle}>
-            Each seeded draft thread keeps its revision lineage, reviewer notes, and latest decision visible so manual approval stays auditable.
-          </p>
-          <div style={{ display: 'grid', gap: 16 }}>
-            {draftThreads.map((thread) => {
-              const lead = demoLeads.find((candidate) => candidate.id === thread.current.leadId);
-              const latestReview = thread.current.reviewLog[thread.current.reviewLog.length - 1];
-              const stageDefinition = stages.find((stage) => stage.stage === thread.current.stage);
-              return (
-                <article key={thread.current.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <strong>{lead?.name ?? thread.current.leadId}</strong>
-                      <div style={mutedStyle}>
-                        {stageDefinition?.label ?? thread.current.stage} · revision v{thread.current.version} · {thread.current.mode}
+                        <span className={`badge ${l.status.toLowerCase()}`}>
+                          {l.status}
+                        </span>
+                        <p>
+                          {l.unsubscribed
+                            ? "Opted out · follow-up paused"
+                            : item?.nextAction.label ||
+                              "Closed · no follow-up needed"}
+                        </p>
+                        {item && (
+                          <small>
+                            {item.priority.toUpperCase()} PRIORITY ·{" "}
+                            {Math.floor(item.ageHours)}h since last activity
+                            {item.ageHours >= 48 ? " · STALE" : ""}
+                          </small>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+              <div className="detail">
+                {!lead ? (
+                  <section className="panel empty">
+                    <span className="empty-icon">↗</span>
+                    <h2>Every good follow-up starts here.</h2>
+                    <p>
+                      Select a lead to see their context, add a note,
+                      <br />
+                      and prepare the next conversation.
+                    </p>
+                    <button className="secondary" onClick={() => setTab("new")}>
+                      Add your first lead
+                    </button>
+                  </section>
+                ) : (
+                  <>
+                    <section className="panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p className="eyebrow">LEAD DETAILS</p>
+                          <h2>{lead.name}</h2>
+                        </div>
+                        <span className={`badge ${lead.status.toLowerCase()}`}>
+                          {lead.status}
+                        </span>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={pillStyle}>{thread.history.length + 1} revisions</span>
-                      <span style={thread.current.status === 'rejected' ? warningPillStyle : miniPillStyle}>{thread.current.status}</span>
-                    </div>
-                  </div>
-
-                  <div>{thread.current.content}</div>
-
-                  <div style={{ ...mutedStyle, display: 'grid', gap: 4 }}>
-                    <div><strong>Latest decision:</strong> {thread.latestDecision ?? 'pending review'}</div>
-                    <div><strong>Reviewed by:</strong> {thread.latestActor ?? 'Awaiting human review'}</div>
-                    <div><strong>Stage action:</strong> {stageDefinition?.recommendedAction ?? 'Review the current draft before any send step.'}</div>
-                  </div>
-
-                  {latestReview?.notes ? (
-                    <div style={{ ...mutedStyle, borderTop: '1px solid #d8dee4', paddingTop: 8 }}>
-                      <strong>Latest note:</strong> {latestReview.notes}
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <div style={{ ...mutedStyle, marginBottom: 6 }}>Revision lineage</div>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
-                      {thread.history.map((revision) => (
-                        <li key={revision.id} style={{ borderTop: '1px solid #d8dee4', paddingTop: 6 }}>
-                          <strong>v{revision.version}</strong> · {revision.status} · {formatTimestamp(revision.updatedAt.toISOString())}
-                        </li>
+                      <form
+                        key={`${lead.id}-${lead.updatedAt}`}
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const values = fields(e.currentTarget);
+                          void mutate(
+                            {
+                              action: "updateLead",
+                              leadId: lead.id,
+                              ...values,
+                              unsubscribed: values.unsubscribed === "on",
+                            },
+                            "Lead updated.",
+                          );
+                        }}
+                      >
+                        <LeadFields lead={lead} />
+                        <label className="check">
+                          <input
+                            name="unsubscribed"
+                            type="checkbox"
+                            defaultChecked={lead.unsubscribed}
+                          />{" "}
+                          Opted out of follow-up
+                        </label>
+                        <div className="actions">
+                          <button disabled={busy}>Save lead</button>
+                          <button
+                            disabled={busy}
+                            type="button"
+                            className="danger quiet"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete ${lead.name} and their notes and drafts? The audit record will remain.`,
+                                )
+                              )
+                                void mutate(
+                                  { action: "deleteLead", leadId: lead.id },
+                                  "Lead deleted.",
+                                  () => setSelected(""),
+                                );
+                            }}
+                          >
+                            Delete lead
+                          </button>
+                        </div>
+                      </form>
+                    </section>
+                    <section className="panel">
+                      <p className="eyebrow">THE NEXT CONVERSATION</p>
+                      <h2>Follow-up drafts</h2>
+                      <p className="muted">
+                        Provider: {data.mode.provider}. Every draft needs your
+                        review. Approval saves a decision; sending is disabled.
+                      </p>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void mutate(
+                            {
+                              action: "generateDraft",
+                              leadId: lead.id,
+                              ...fields(e.currentTarget),
+                            },
+                            "Draft generated. Review before using.",
+                          );
+                        }}
+                      >
+                        <label>
+                          Desired next step
+                          <input
+                            name="objective"
+                            maxLength={500}
+                            placeholder="e.g. Book a 15-minute discovery call"
+                          />
+                        </label>
+                        <button
+                          disabled={
+                            busy ||
+                            lead.unsubscribed ||
+                            ["WON", "LOST"].includes(lead.status)
+                          }
+                        >
+                          Generate draft
+                        </button>
+                      </form>
+                      {lead.drafts.map((d) => (
+                        <DraftEditor
+                          key={`${d.id}-${d.revision}`}
+                          draft={d}
+                          blocked={
+                            lead.unsubscribed ||
+                            ["WON", "LOST"].includes(lead.status)
+                          }
+                          busy={busy}
+                          review={(values, decision) =>
+                            void mutate(
+                              {
+                                action: "reviewDraft",
+                                leadId: lead.id,
+                                draftId: d.id,
+                                revision: d.revision,
+                                ...values,
+                                decision,
+                              },
+                              `Draft ${decision}. Sending remains disabled.`,
+                            )
+                          }
+                        />
                       ))}
-                      <li style={{ borderTop: '1px solid #d8dee4', paddingTop: 6 }}>
-                        <strong>v{thread.current.version}</strong> · current · {formatTimestamp(thread.current.updatedAt.toISOString())}
-                      </li>
-                    </ul>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Revision coverage</h2>
-            <ul>
-              <li>Tracked draft threads: {draftHistorySummary.totalThreads}</li>
-              <li>Total revisions: {draftHistorySummary.totalRevisions}</li>
-              <li>Revised threads: {draftHistorySummary.revisedThreads}</li>
-              <li>Pending approvals: {draftHistorySummary.pendingThreads}</li>
-              <li>Approved drafts: {draftHistorySummary.approvedThreads}</li>
-              <li>Rejected drafts: {draftHistorySummary.rejectedThreads}</li>
-              <li>Latest review update: {formatTimestamp(draftHistorySummary.latestUpdatedAt ?? '')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Stage guide</h2>
-            <ul>
-              {stages.map((stage) => (
-                <li key={stage.stage}>
-                  <strong>{stage.label}:</strong> {stage.recommendedAction}
-                </li>
+                    </section>
+                    <section className="panel">
+                      <h2>Notes & timeline</h2>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget;
+                          void mutate(
+                            {
+                              action: "addNote",
+                              leadId: lead.id,
+                              ...fields(form),
+                            },
+                            "Note saved.",
+                            () => form.reset(),
+                          );
+                        }}
+                      >
+                        <label>
+                          Add a note
+                          <textarea
+                            name="body"
+                            required
+                            maxLength={5000}
+                            placeholder="What matters to this lead?"
+                          />
+                        </label>
+                        <button disabled={busy}>Save note</button>
+                      </form>
+                      <ul className="timeline">
+                        {lead.timelineNotes.map((n) => (
+                          <li key={n.id}>
+                            <span className="badge">NOTE</span>
+                            <p className="prewrap">{n.body}</p>
+                            <small>{when(n.createdAt)}</small>
+                          </li>
+                        ))}
+                        {lead.events.map((e) => (
+                          <li key={e.id}>
+                            <strong>{e.eventType.replaceAll("_", " ")}</strong>
+                            <p className="muted">{e.payload}</p>
+                            <small>{when(e.createdAt)}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+          {tab === "import" && (
+            <section className="panel narrow">
+              <p className="eyebrow">BRING YOUR CONTACTS</p>
+              <h2>Import leads from CSV</h2>
+              <p className="muted">
+                Required: name, email. Optional: phone, source, status. Import
+                is atomic; existing emails or names cause a conflict. Maximum
+                200 rows.
+              </p>
+              <label>
+                CSV content
+                <textarea
+                  className="csv"
+                  value={csv}
+                  onChange={(e) => setCsv(e.target.value)}
+                />
+              </label>
+              <p>
+                {preview.validRows.length} valid rows · {preview.issues.length}{" "}
+                errors · {preview.duplicateEmails.length} duplicate emails
+              </p>
+              {[
+                ...preview.issues.map(
+                  (i) => `Row ${i.rowNumber}: ${i.message}`,
+                ),
+                ...preview.missingHeaders.map((h) => `Missing header: ${h}`),
+                ...preview.unknownHeaders.map((h) => `Unknown header: ${h}`),
+                ...preview.duplicateEmails.map((h) => `Duplicate email: ${h}`),
+              ].map((issue, i) => (
+                <p className="danger" key={i}>
+                  {issue}
+                </p>
               ))}
-            </ul>
-          </div>
-
-          <div>
-            <h2>Manual QA prompts</h2>
-            <ul>
-              <li>Confirm each edit creates a visible new revision instead of mutating old copy.</li>
-              <li>Check approval and rejection notes stay attached to the current review trail.</li>
-              <li>Verify manual mode remains visible before any send step is taken.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Manual QA checklist</h2>
-          <p style={mutedStyle}>
-            A release-friendly checklist for demo runs and branch promotion so operators can verify the MVP without enabling live outbound delivery.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {demoManualQaChecklist.map((item) => (
-              <li key={item.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <strong>{item.title}</strong>
-                  <span style={item.status === 'ready' ? pillStyle : warningPillStyle}>{item.status}</span>
-                </div>
-                <div style={{ ...mutedStyle, marginTop: 6 }}>{item.whyItMatters}</div>
-                <div style={{ marginTop: 8 }}><strong>Verify:</strong> {item.verification}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Checklist coverage</h2>
-            <ul>
-              <li>Total checkpoints: {manualQaSummary.totalItems}</li>
-              <li>Ready checkpoints: {manualQaSummary.readyItems}</li>
-              <li>Watch items: {manualQaSummary.watchItems}</li>
-              <li>Areas covered: {manualQaSummary.areas.join(', ')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Runbook</h2>
-            <ul>
-              <li>Checklist doc: <code>docs/manual-qa.md</code></li>
-              <li>Regression commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
-              <li>Leave <code>SEND_MODE=manual</code> in place for normal QA.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Feedback intake templates</h2>
-          <p style={mutedStyle}>
-            A manual-safe capture starter for the next three leads in the queue so reviewers can log structured feedback without inventing the payload from scratch.
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {feedbackCaptureDrafts.map((draft) => (
-              <li key={draft.leadId} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <div>
-                    <strong>{draft.leadName}</strong>
-                    <div style={{ ...mutedStyle, marginTop: 4 }}>
-                      {draft.suggestedCategory.replace('_', ' ')} · {draft.source} · score {draft.suggestedScore}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={draft.priority === 'high' ? warningPillStyle : pillStyle}>{draft.priority}</span>
-                    <span style={draft.suggestedSentiment === 'negative' ? warningPillStyle : miniPillStyle}>{draft.suggestedSentiment}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture prompt</div>
-                  <div>{draft.prompt}</div>
-                </div>
-
-                <div>
-                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Metadata preview</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {Object.entries(draft.metadataPreview).map(([key, value]) => (
-                      <span key={key} style={miniPillStyle}>{key}: {String(value)}</span>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.validRows.map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.name}</td>
+                        <td>{r.email}</td>
+                        <td>{r.status}</td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ ...mutedStyle, marginBottom: 4 }}>Capture checklist</div>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {draft.checklist.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Capture rules</h2>
-            <ul>
-              <li>Stick to `category`, `sentiment`, `message`, and optional 1-5 `score`.</li>
-              <li>Always link the note back to a lead when the workflow context is known.</li>
-              <li>Keep `SEND_MODE=manual` and treat feedback as review input, not automation permission.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Coverage</h2>
-            <ul>
-              <li>Suggested intake cards: {feedbackCaptureDrafts.length}</li>
-              <li>Highest-priority lead: {feedbackCaptureDrafts[0]?.leadName ?? 'n/a'}</li>
-              <li>Open feedback linked to those cards: {feedbackCaptureDrafts.reduce((sum, draft) => sum + draft.openFeedbackCount, 0)}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Runbook</h2>
-            <ul>
-              <li>Docs: <code>docs/feedback-capture.md</code></li>
-              <li>Source helpers: <code>src/domain/feedback.ts</code></li>
-              <li>Log enough metadata to recreate the queue context during QA review.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Feedback follow-up queue</h2>
-          <p style={mutedStyle}>
-            Negative or low-score feedback is promoted into a lightweight triage queue so operators know which review notes need action before the next demo.
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {feedbackFollowUps.map((entry) => {
-              const lead = demoLeads.find((candidate) => candidate.id === entry.leadId);
-              return (
-                <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <strong>{lead?.name ?? 'Unlinked feedback'}</strong>
-                      {lead ? <div style={{ ...mutedStyle, marginTop: 4 }}>{lead.status.toUpperCase()} · {lead.email ?? 'no-email'}</div> : null}
-                    </div>
-                    <span style={feedbackEscalation(entry) === 'urgent' ? warningPillStyle : miniPillStyle}>{feedbackEscalation(entry)}</span>
-                  </div>
-                  <div style={{ ...mutedStyle, marginTop: 6 }}>
-                    {entry.category.replace('_', ' ')} · {entry.source} · score {entry.score ?? 'n/a'}
-                  </div>
-                  <div style={{ marginTop: 8 }}>{entry.message}</div>
-                  <div style={{ ...mutedStyle, marginTop: 8 }}><strong>Next step:</strong> {feedbackActionHint(entry)}</div>
-                  <div style={{ ...mutedStyle, marginTop: 6 }}><strong>Triage state:</strong> {feedbackEscalation(entry) === 'urgent' ? 'Overdue review item' : 'Active review item'}</div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Triage prompts</h2>
-            <ul>
-              <li>Review negative or score-3-and-below entries before the next demo.</li>
-              <li>Check whether the linked lead still needs a draft, copy tweak, or product bug fix.</li>
-              <li>Keep the queue manual-safe: feedback informs humans, it does not auto-send.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Escalation snapshot</h2>
-            <ul>
-              <li>Urgent items: {feedbackEscalationSummary.urgent}</li>
-              <li>Watch items: {feedbackEscalationSummary.watch}</li>
-              <li>Fresh items: {feedbackEscalationSummary.fresh}</li>
-              <li>Oldest open note: {formatTimestamp(feedbackEscalationSummary.oldestOpenAt ?? '')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Coverage</h2>
-            <ul>
-              <li>Queued unresolved items: {feedbackFollowUps.length}</li>
-              <li>Newest feedback signal: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
-              <li>Primary source: seeded inbox + summary helpers in <code>src/domain/feedback.ts</code></li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Deployment readiness</h2>
-          <p style={mutedStyle}>
-            A manual-safe release checklist for staging or production so the team can promote stacked PR work without guessing at env, migration, smoke-test, or rollback steps.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {demoDeploymentChecklist.map((item) => (
-              <li key={item.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <strong>{item.title}</strong>
-                  <span style={item.status === 'ready' ? pillStyle : warningPillStyle}>{item.status}</span>
-                </div>
-                <div style={{ ...mutedStyle, marginTop: 6 }}>{item.whyItMatters}</div>
-                <div style={{ marginTop: 8 }}><strong>Verify:</strong> {item.verification}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Release summary</h2>
-            <ul>
-              <li>Total checkpoints: {deploymentSummary.totalItems}</li>
-              <li>Ready checkpoints: {deploymentSummary.readyItems}</li>
-              <li>Watch items: {deploymentSummary.watchItems}</li>
-              <li>Areas covered: {deploymentSummary.areas.join(', ')}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Runbook</h2>
-            <ul>
-              <li>Deployment doc: <code>docs/deployment.md</code></li>
-              <li>Preflight commands: <code>npm test -- --run</code> and <code>npm run build</code></li>
-              <li>Database step: <code>npx prisma migrate deploy</code></li>
-              <li>Rollback rule: keep the previous good branch or artifact ready before promoting the next stacked slice.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.2fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Feedback hotspots</h2>
-          <p style={mutedStyle}>
-            Repeated feedback on the same lead stays grouped so reviewers can see which conversations still need copy changes, bug fixes, or manual follow-up before the next demo.
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {feedbackLeadHotspots.map((hotspot) => {
-              const lead = demoLeads.find((candidate) => candidate.id === hotspot.leadId);
-              return (
-                <li key={hotspot.leadId} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <strong>{lead?.name ?? hotspot.leadId}</strong>
-                      <div style={{ ...mutedStyle, marginTop: 4 }}>{lead ? `${lead.status.toUpperCase()} · ${lead.email ?? 'no-email'}` : 'Linked lead unavailable'}</div>
-                    </div>
-                    <span style={hotspot.openEntries > 0 ? warningPillStyle : miniPillStyle}>
-                      {hotspot.openEntries} open
-                    </span>
-                  </div>
-                  <div style={{ ...mutedStyle, marginTop: 8 }}>
-                    {hotspot.totalEntries} total entries · {hotspot.negativeEntries} negative · latest {formatTimestamp(hotspot.latestAt)}
-                  </div>
-                  <div style={{ ...mutedStyle, marginTop: 6 }}>
-                    {hotspot.openEntries > 1
-                      ? 'Repeated open notes suggest a draft/content fix should land before the next outreach.'
-                      : 'Single open note: confirm the reviewer concern is addressed before the next demo.'}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Repeat issue watchlist</h2>
-            <ul>
-              <li>Review leads with multiple open feedback notes before drafting again.</li>
-              <li>Use repeated negatives to separate product bugs from copy-quality issues.</li>
-              <li>Close the loop manually once the reviewer confirms the fix.</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Coverage</h2>
-            <ul>
-              <li>Tracked hotspots: {feedbackLeadHotspots.length}</li>
-              <li>Most urgent lead: {demoLeads.find((lead) => lead.id === feedbackLeadHotspots[0]?.leadId)?.name ?? 'n/a'}</li>
-              <li>Source data: <code>src/domain/feedback.ts</code> grouped by linked lead</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Feedback capture inbox</h2>
-          <p style={mutedStyle}>
-            Reviewers can flag UX, bug, or draft-quality issues without leaving the manual-safe workflow. The seeded inbox keeps score, sentiment, source, and linked lead context visible.
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            {latestFeedback.map((entry) => {
-              const lead = demoLeads.find((candidate) => candidate.id === entry.leadId);
-              return (
-                <li key={entry.id} style={{ border: '1px solid #d0d7de', borderRadius: 12, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <strong>{entry.category.replace('_', ' ')}</strong>
-                      <div style={{ ...mutedStyle, marginTop: 4 }}>
-                        {lead ? `${lead.name} · ${lead.status.toUpperCase()}` : 'Unlinked feedback'}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={entry.sentiment === 'negative' ? warningPillStyle : pillStyle}>{entry.sentiment}</span>
-                      <span style={entry.resolved ? miniPillStyle : warningPillStyle}>{entry.resolved ? 'resolved' : 'open'}</span>
-                      <span style={feedbackEscalation(entry) === 'urgent' ? warningPillStyle : miniPillStyle}>{feedbackEscalation(entry)}</span>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 8 }}>{entry.message}</div>
-                  <div style={{ ...mutedStyle, marginTop: 8 }}><strong>Action hint:</strong> {feedbackActionHint(entry)}</div>
-                  <div style={{ ...mutedStyle, marginTop: 8 }}>
-                    {entry.reviewer} · {entry.source} · score {entry.score ?? 'n/a'} · {formatTimestamp(entry.createdAt)}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Feedback summary</h2>
-            <ul>
-              <li>Total entries: {feedbackSummary.total}</li>
-              <li>Average score: {feedbackSummary.averageScore ?? 'n/a'}</li>
-              <li>Open items: {feedbackSummary.openCount}</li>
-              <li>Resolved items: {feedbackSummary.resolvedCount}</li>
-              <li>Latest capture: {formatTimestamp(feedbackSummary.latestAt ?? '')}</li>
-              <li>Categories: UX {feedbackSummary.categories.ux}, bugs {feedbackSummary.categories.bug}, draft quality {feedbackSummary.categories.result_quality}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Operator prompts</h2>
-            <ul>
-              <li>Capture draft-quality feedback before toggling any send mode.</li>
-              <li>Log bug feedback when CSV import, queue order, or notes look wrong.</li>
-              <li>Use repeated low scores to decide which prompts or UI slices need the next fix.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section style={{ display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
-        <div style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>CSV import preview</h2>
-          <p style={mutedStyle}>
-            Operators can sanity-check bulk lead uploads before touching the database: required fields, duplicate emails, status normalization, and row-level validation stay visible.
-          </p>
-
-          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginBottom: 16 }}>
-            <MetricCard label="Valid rows" value={String(csvPreview.validRows.length)} helper="Rows ready for import" />
-            <MetricCard label="Row issues" value={String(csvPreview.issues.length)} helper="Rows blocked before import" />
-            <MetricCard label="Duplicates" value={String(csvPreview.duplicateEmails.length)} helper="Emails repeated in the file" />
-          </div>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d8dee4' }}>
-                  <th style={tableHeadStyle}>Row</th>
-                  <th style={tableHeadStyle}>Lead</th>
-                  <th style={tableHeadStyle}>Status</th>
-                  <th style={tableHeadStyle}>Source</th>
-                  <th style={tableHeadStyle}>Warnings</th>
-                </tr>
-              </thead>
-              <tbody>
-                {csvPreview.validRows.map((row) => (
-                  <tr key={`${row.rowNumber}-${row.email}`} style={{ borderBottom: '1px solid #f0f3f6' }}>
-                    <td style={tableCellStyle}>{row.rowNumber}</td>
-                    <td style={tableCellStyle}>
-                      <strong>{row.name}</strong>
-                      <div style={mutedStyle}>{row.email}</div>
-                    </td>
-                    <td style={tableCellStyle}>{row.status.toUpperCase()}</td>
-                    <td style={tableCellStyle}>{row.source || '—'}</td>
-                    <td style={tableCellStyle}>{row.warnings.join(' · ') || 'Ready to import'}</td>
-                  </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button
+                disabled={
+                  busy ||
+                  !preview.validRows.length ||
+                  preview.issues.length > 0 ||
+                  preview.duplicateEmails.length > 0 ||
+                  preview.missingHeaders.length > 0 ||
+                  preview.unknownHeaders.length > 0
+                }
+                onClick={() =>
+                  void mutate(
+                    { action: "importCsv", csv },
+                    "CSV imported. Open the lead workspace to review.",
+                  )
+                }
+              >
+                Import {preview.validRows.length} leads
+              </button>
+            </section>
+          )}
+          {tab === "activity" && (
+            <section className="workspace activity">
+              <div className="panel">
+                <p className="eyebrow">A CLEAR RECORD</p>
+                <h2>Audit log</h2>
+                <p className="muted">
+                  Most recent 100 saved changes. Deletion records remain after a
+                  lead is removed.
+                </p>
+                <ul className="timeline">
+                  {data.audit.length === 0 && <li>No activity yet.</li>}
+                  {data.audit.map((a) => (
+                    <li key={a.id}>
+                      <strong>{a.action}</strong>
+                      <p className="muted">{a.entityId}</p>
+                      <small>{when(a.createdAt)}</small>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="panel">
+                <h2>Share feedback</h2>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const values = fields(form);
+                    void mutate(
+                      {
+                        action: "feedback",
+                        ...values,
+                        rating: Number(values.rating),
+                      },
+                      "Feedback saved. Thank you.",
+                      () => form.reset(),
+                    );
+                  }}
+                >
+                  <label>
+                    Related lead
+                    <select name="leadId">
+                      <option value="">General feedback</option>
+                      {data.leads.map((l) => (
+                        <option value={l.id} key={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Rating
+                    <select name="rating" defaultValue="5">
+                      {[5, 4, 3, 2, 1].map((n) => (
+                        <option key={n} value={n}>
+                          {n} / 5
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Category
+                    <input
+                      name="category"
+                      maxLength={80}
+                      placeholder="Workflow, draft quality, usability…"
+                    />
+                  </label>
+                  <label>
+                    Feedback
+                    <textarea name="comments" required maxLength={3000} />
+                  </label>
+                  <button disabled={busy}>Save feedback</button>
+                </form>
+                <h3>Recent feedback</h3>
+                {data.feedback.map((f) => (
+                  <article className="feedback" key={f.id}>
+                    <strong>{f.rating}/5</strong>
+                    <p className="prewrap">{f.comments}</p>
+                    <small>{when(f.createdAt)}</small>
+                  </article>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle, display: 'grid', gap: 16, alignContent: 'start' }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Import checks</h2>
-            <ul>
-              <li>Required headers: <code>name</code>, <code>email</code></li>
-              <li>Optional headers: <code>phone</code>, <code>source</code>, <code>status</code></li>
-              <li>Missing headers: {csvPreview.missingHeaders.join(', ') || 'none'}</li>
-              <li>Unknown headers: {csvPreview.unknownHeaders.join(', ') || 'none'}</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2>Blocked rows</h2>
-            <ul>
-              {csvPreview.issues.map((issue) => (
-                <li key={`${issue.rowNumber}-${issue.message}`}>Row {issue.rowNumber}: {issue.message}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
+              </div>
+            </section>
+          )}
+          <footer>
+            <span>FOLLOW THROUGH / LOCAL WORKSPACE</span>
+            <span>
+              Saved in Postgres · Fictional seed contacts · No outbound delivery
+            </span>
+          </footer>
+        </>
+      )}
     </main>
   );
 }
-
-function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div style={panelStyle}>
-      <div style={mutedStyle}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, margin: '8px 0' }}>{value}</div>
-      <div style={mutedStyle}>{helper}</div>
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{value.toString().padStart(2, "0")}</strong>
     </div>
   );
 }
-
-function formatTimestamp(value: string) {
-  if (!value) {
-    return 'N/A';
-  }
-
-  return new Date(value).toLocaleString('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'UTC',
-  });
+function LeadFields({ lead }: { lead?: Lead }) {
+  const choices = lead
+    ? [
+        lead.status,
+        ...allowedTransitions[lead.status.toLowerCase() as LeadStatus].map(
+          (s) => s.toUpperCase(),
+        ),
+      ]
+    : statuses;
+  return (
+    <>
+      <div className="form-grid">
+        <label>
+          Name
+          <input
+            name="name"
+            required
+            maxLength={200}
+            defaultValue={lead?.name}
+          />
+        </label>
+        <label>
+          Email
+          <input
+            name="email"
+            type="email"
+            maxLength={254}
+            defaultValue={lead?.email ?? ""}
+          />
+        </label>
+        <label>
+          Phone
+          <input name="phone" maxLength={80} defaultValue={lead?.phone ?? ""} />
+        </label>
+        <label>
+          Source
+          <input
+            name="source"
+            maxLength={200}
+            defaultValue={lead?.source ?? ""}
+          />
+        </label>
+      </div>
+      <label>
+        Status
+        <select name="status" defaultValue={lead?.status ?? "NEW"}>
+          {choices.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Lead context
+        <textarea
+          name="notes"
+          maxLength={5000}
+          defaultValue={lead?.notes ?? ""}
+        />
+      </label>
+    </>
+  );
 }
-
-const panelStyle: React.CSSProperties = {
-  border: '1px solid #d0d7de',
-  borderRadius: 16,
-  padding: 16,
-  background: '#fff',
-  boxShadow: '0 1px 2px rgba(16, 24, 40, 0.05)',
-};
-
-const mutedStyle: React.CSSProperties = {
-  color: '#57606a',
-  fontSize: 14,
-};
-
-const pillStyle: React.CSSProperties = {
-  borderRadius: 999,
-  background: '#ddf4ff',
-  color: '#0550ae',
-  padding: '4px 10px',
-  fontSize: 12,
-  fontWeight: 600,
-};
-
-const warningPillStyle: React.CSSProperties = {
-  borderRadius: 999,
-  background: '#fff8c5',
-  color: '#9a6700',
-  padding: '4px 10px',
-  fontSize: 12,
-  fontWeight: 600,
-};
-
-const miniPillStyle: React.CSSProperties = {
-  borderRadius: 999,
-  background: '#f6f8fa',
-  color: '#57606a',
-  padding: '2px 8px',
-  fontSize: 11,
-  fontWeight: 600,
-};
-
-const tableHeadStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  fontSize: 12,
-  color: '#57606a',
-};
-
-const tableCellStyle: React.CSSProperties = {
-  padding: '10px',
-  verticalAlign: 'top',
-};
+function DraftEditor({
+  draft,
+  blocked,
+  busy,
+  review,
+}: {
+  draft: Draft;
+  blocked: boolean;
+  busy: boolean;
+  review: (
+    values: Record<string, FormDataEntryValue>,
+    decision: string,
+  ) => void;
+}) {
+  return (
+    <article className="draft">
+      <div className="panel-heading">
+        <h3>Draft · revision {draft.revision}</h3>
+        <span className="badge">
+          {draft.approved
+            ? "APPROVED"
+            : draft.rejected
+              ? "REJECTED"
+              : "NEEDS REVIEW"}
+        </span>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          review(fields(e.currentTarget), "edited");
+        }}
+      >
+        <label>
+          Subject
+          <input
+            name="subject"
+            required
+            maxLength={300}
+            defaultValue={draft.subject}
+          />
+        </label>
+        <label>
+          Draft body
+          <textarea
+            name="content"
+            className="draft-body"
+            required
+            maxLength={15000}
+            defaultValue={draft.content}
+          />
+        </label>
+        <div className="actions">
+          <button disabled={busy} className="secondary">
+            Save revision
+          </button>
+          <button
+            disabled={busy || blocked}
+            type="button"
+            onClick={(e) => {
+              const form = e.currentTarget.closest("form")!;
+              if (form.reportValidity()) review(fields(form), "approved");
+            }}
+          >
+            Approve draft
+          </button>
+          <button
+            disabled={busy}
+            className="quiet danger"
+            type="button"
+            onClick={(e) => {
+              const form = e.currentTarget.closest("form")!;
+              if (form.reportValidity()) review(fields(form), "rejected");
+            }}
+          >
+            Reject draft
+          </button>
+        </div>
+      </form>
+      <details>
+        <summary>Review notes & revision history</summary>
+        <ul>
+          {(draft.warnings ?? []).map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+        {draft.revisions.map((r) => (
+          <div key={r.id}>
+            <h4>
+              Revision {r.revision} · {r.decision}
+            </h4>
+            <strong>{r.subject}</strong>
+            <p className="prewrap">{r.content}</p>
+          </div>
+        ))}
+      </details>
+    </article>
+  );
+}

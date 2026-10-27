@@ -6,29 +6,41 @@
     "seed": "node prisma/seed.mjs"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "vitest",
-    "lint": "next lint",
-    "pretypecheck": "mkdir -p .next/types/app && touch .next/types/app/layout.ts .next/types/app/page.ts",
-    "typecheck": "tsc --noEmit",
-    "import:csv": "node scripts/import-leads-csv.mjs"
+    "dev": "next dev --webpack --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "import:csv": "node scripts/import-leads-csv.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.mjs",
+    "demo": "node scripts/demo.mjs",
+    "test:e2e": "playwright test",
+    "postinstall": "prisma generate",
+    "format": "prettier --write src/app src/server e2e playwright.config.ts vitest.config.ts eslint.config.mjs scripts prisma/seed.mjs docs README.md"
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "next": "16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@types/node": "25.9.1",
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
-    "eslint": "8.57.0",
-    "eslint-config-next": "14.2.5",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "prettier": "^3.9.10",
     "prisma": "5.18.0",
-    "typescript": "5.5.4",
-    "vitest": "2.0.5"
+    "typescript": "^5.9",
+    "vite": "7.3.7",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

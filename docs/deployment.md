@@ -1,125 +1,30 @@
-# Deployment Guide
+# Local deployment and migrations
 
-This project is designed for **safe/manual operation by default**. Use this runbook to ship a new build without enabling live outbound messaging. Success means the dashboard, queue, timeline, audit trail, CSV preview, and feedback workflow all remain operator-visible and reversible after deploy.
+This release targets a local, single-operator demonstration. The default development and production start commands bind to 127.0.0.1. There is no authentication. Add authentication, authorization, tenant isolation, and a deployment-specific security review before exposing it publicly.
 
-## Deployment principles
-- Keep `SEND_MODE=manual` for normal staging and production rollout.
-- Treat the dashboard (`/`) as the primary smoke-test surface after every release.
-- Promote stacked branches deliberately and record the last known-good commit before advancing.
-- Never commit production secrets or platform-generated `.env` files.
-- Separate deployment from any future decision to enable live outbound behavior.
+## Fresh database
 
-## Prerequisites
-- Node.js 20+
-- npm 10+
-- PostgreSQL 15+
-- Access to the target environment's secret manager or env-var settings
+Run `npm ci`, `docker compose up -d --wait db`, `npm run db:migrate`, and optionally `npm run db:seed`. Migrations are committed; do not generate a new initial migration during setup. `npm run demo` runs this flow and starts a production build automatically.
 
-## Environment configuration
-Create the target `.env` or platform env-var set from `.env.example`.
+## Existing database created with the original schema
 
-Minimum values:
-- `DATABASE_URL`
-- `NEXT_PUBLIC_APP_NAME`
-- `SEND_MODE=manual`
-- `AI_PROVIDER=mock` for the safest default, or `AI_PROVIDER=openai` with a provider key only when real draft-generation validation is explicitly required
-- `FEEDBACK_CAPTURE_ENABLED=true` unless you intentionally want to suppress QA feedback writes
-
-Recommended manual-safe launch posture:
-
-```env
-SEND_MODE=manual
-AI_PROVIDER=mock
-FEEDBACK_CAPTURE_ENABLED=true
-FEEDBACK_DEFAULT_CHANNEL=in_app
-```
-
-If the real provider is used, add the matching API key through the platform secret store. Never switch to `SEND_MODE=live` as part of a normal deploy. That must remain a separate, explicitly approved change.
-
-## Release preflight
-Run this before touching the integration branch or production target:
+Back up the database first. A database created by `prisma db push` or the old README has no migration history. Confirm it exactly matches `git show 68aad43:prisma/schema.prisma` before baselining. Do not mark a migration applied unless its tables and constraints already exist.
 
 ```bash
-npm ci
-npm test -- --run
-npm run build
+npx prisma migrate resolve --applied 202610270001_initial
+npm run db:migrate
 ```
 
-If any step fails, stop. Do not continue with a partial or "probably fine" release candidate.
+The second migration adds draft metadata and revision history without dropping leads, notes, feedback, drafts, or audit records. It backfills existing draft text as revision 1. Databases with another migration history or schema drift require a reviewed reconciliation; do not reset or drop them.
 
-## Database rollout
-Run migrations before promoting the new app build:
+## Release checks
 
-```bash
-npx prisma migrate deploy
-```
+Run lint, typecheck, unit tests, dependency audit, production build, then browser tests against a separate test database. CI performs all of these. Browser tests save and reload actual records, check draft review conflicts, validate imports atomically, and check the mobile layout. See `docs/manual-qa.md` for the operator walkthrough.
 
-Optional but useful after dependency or schema changes:
+Stop an existing server before building in the same checkout. Start with `npm run start -- --port 3115`. Confirm `/api/workspace` returns HTTP 200 and the dashboard shows saved contacts. Database failures return HTTP 503 with an actionable retry state rather than presenting fixture data as saved data.
 
-```bash
-npx prisma generate
-```
+## Persistence and backups
 
-What this protects:
-- lead status and queue flows
-- timeline and structured note history
-- audit-log coverage
-- feedback capture
-- CSV import persistence paths once they move beyond preview mode
+The Compose volume `sales-followup-demo_pgdata` retains records after app/container restarts. `docker compose stop db` keeps it. Do not use `docker compose down -v` unless you intend to erase all local demo data. Use standard `pg_dump`/`pg_restore` with the credentials in your local environment when preserving records.
 
-## Local release rehearsal
-For a prod-like local validation pass:
-
-```bash
-cp .env.example .env
-docker compose up -d db
-npm ci
-npx prisma migrate deploy
-npm test -- --run
-npm run build
-npm run start
-```
-
-Use this when you want to rehearse the exact operator flow before a hosted deploy.
-
-## Platform release notes
-- Set the same env vars in the platform UI or secret store; do not rely on checked-in files.
-- Run `prisma migrate deploy` as part of the release command or a pre-start hook.
-- Keep `SEND_MODE=manual` or `SEND_MODE=test` until explicit human approval to go live.
-- Preserve logs long enough to review queue, audit, feedback, and draft-related issues after deployment.
-
-## Post-deploy smoke checklist
-After the app is live, verify:
-- `/` loads without runtime errors
-- the Safety mode card still shows `manual`
-- queue metrics render with seeded/demo data or the target environment's expected dataset
-- the Recent audit log section renders recent activity
-- lead timeline cards still show notes and newest-first events
-- manual QA coverage and deployment readiness sections are visible
-- the CSV preview section renders valid rows, blocked rows, and duplicate warnings
-- feedback capture and escalation surfaces still render for manual review
-- no secrets appear in logs, the UI, or error pages
-
-## Release evidence to capture
-Record these artifacts in the issue, PR, or handoff note for every deploy candidate:
-- commit SHA or branch name deployed
-- output from `npm test -- --run`
-- output from `npm run build`
-- confirmation that `npx prisma migrate deploy` succeeded
-- confirmation that `/` rendered in manual-safe mode after deploy
-- any remaining operator-visible gaps discovered during the smoke pass
-
-## Rollback plan
-Before promoting the next slice:
-- record the current good branch or commit SHA
-- keep the previous deployment artifact or image tag available
-- if the release breaks dashboard smoke checks, redeploy the previous known-good artifact first and debug afterward
-
-For stacked PRs, rollback is usually easiest by redeploying the last known-good base branch rather than attempting a rushed multi-slice revert while the app is unhealthy.
-
-## Current MVP limits
-This runbook intentionally assumes:
-- manual review remains the product boundary
-- demo and seeded workflows are still part of QA and operator validation
-- live outbound delivery is not a default capability
-- deployment success means the dashboard and safety rails work, not that autonomous outreach is enabled
+Audit records survive lead deletion; related lead notes, timeline events and drafts are deleted, and feedback is retained with its lead relation cleared. No automatic sending exists in this release.

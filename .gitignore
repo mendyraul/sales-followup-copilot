@@ -5,3 +5,9 @@ dist
 coverage
 prisma/dev.db
 STATUS.md
+*.tsbuildinfo
+.env.*
+!.env.example
+test-results/
+playwright-report/
+*.log

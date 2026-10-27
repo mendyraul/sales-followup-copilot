@@ -1,8 +1,15 @@
-import type { LeadStatus } from './lead';
+import type { LeadStatus } from "./lead";
 
-const allowedStatuses: LeadStatus[] = ['new', 'contacted', 'replied', 'hot', 'won', 'lost'];
-const requiredHeaders = ['name', 'email'] as const;
-const optionalHeaders = ['phone', 'source', 'status'] as const;
+const allowedStatuses: LeadStatus[] = [
+  "new",
+  "contacted",
+  "replied",
+  "hot",
+  "won",
+  "lost",
+];
+const requiredHeaders = ["name", "email"] as const;
+const optionalHeaders = ["phone", "source", "status"] as const;
 const acceptedHeaders = [...requiredHeaders, ...optionalHeaders];
 
 export type CsvLeadRow = {
@@ -30,43 +37,66 @@ export type CsvImportPreview = {
 };
 
 export function parseLeadCsvPreview(content: string): CsvImportPreview {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const { rows, error } = parseRecords(content.replace(/^\uFEFF/, ""));
+  const lines = rows.filter((row) => row.some((value) => value.trim()));
+
+  if (error)
+    return {
+      ...emptyPreview(),
+      issues: [{ rowNumber: rows.length + 1, message: error }],
+    };
 
   if (lines.length === 0) {
     return emptyPreview();
   }
 
-  const headers = splitCsvLine(lines[0]).map(normalizeHeader);
-  const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
-  const unknownHeaders = headers.filter((header) => !acceptedHeaders.includes(header as (typeof acceptedHeaders)[number]));
+  const headers = lines[0].map(normalizeHeader);
+  const missingHeaders = requiredHeaders.filter(
+    (header) => !headers.includes(header),
+  );
+  const unknownHeaders = headers.filter(
+    (header) =>
+      !acceptedHeaders.includes(header as (typeof acceptedHeaders)[number]),
+  );
   const validRows: CsvLeadRow[] = [];
   const issues: CsvImportIssue[] = [];
   const emailCounts = new Map<string, number>();
+  if (new Set(headers).size !== headers.length)
+    issues.push({ rowNumber: 1, message: "Duplicate column headers" });
 
   lines.slice(1).forEach((line, index) => {
     const rowNumber = index + 2;
-    const cols = splitCsvLine(line);
-    const raw = Object.fromEntries(headers.map((header, columnIndex) => [header, (cols[columnIndex] ?? '').trim()]));
+    const cols = line;
+    if (cols.length !== headers.length) {
+      issues.push({
+        rowNumber,
+        message: "Column count does not match headers",
+      });
+      return;
+    }
+    const raw = Object.fromEntries(
+      headers.map((header, columnIndex) => [
+        header,
+        (cols[columnIndex] ?? "").trim(),
+      ]),
+    );
 
     const rowIssues: string[] = [];
-    const name = raw.name ?? '';
-    const email = (raw.email ?? '').toLowerCase();
-    const phone = raw.phone ?? '';
-    const source = raw.source ?? '';
-    const normalizedStatus = normalizeStatus(raw.status ?? 'new');
+    const name = raw.name ?? "";
+    const email = (raw.email ?? "").toLowerCase();
+    const phone = raw.phone ?? "";
+    const source = raw.source ?? "";
+    const normalizedStatus = normalizeStatus(raw.status ?? "new");
     const warnings: string[] = [];
 
     if (!name) {
-      rowIssues.push('Missing required name');
+      rowIssues.push("Missing required name");
     }
 
     if (!email) {
-      rowIssues.push('Missing required email');
+      rowIssues.push("Missing required email");
     } else if (!looksLikeEmail(email)) {
-      rowIssues.push('Email must look valid');
+      rowIssues.push("Email must look valid");
     }
 
     if (!normalizedStatus) {
@@ -74,11 +104,11 @@ export function parseLeadCsvPreview(content: string): CsvImportPreview {
     }
 
     if (!source) {
-      warnings.push('No source provided');
+      warnings.push("No source provided");
     }
 
     if (!phone) {
-      warnings.push('No phone provided');
+      warnings.push("No phone provided");
     }
 
     if (rowIssues.length > 0 || !normalizedStatus) {
@@ -106,7 +136,10 @@ export function parseLeadCsvPreview(content: string): CsvImportPreview {
   if (duplicateEmails.length > 0) {
     for (const row of validRows) {
       if (duplicateEmails.includes(row.email)) {
-        row.warnings = [...row.warnings, 'Duplicate email appears multiple times in this import'];
+        row.warnings = [
+          ...row.warnings,
+          "Duplicate email appears multiple times in this import",
+        ];
       }
     }
   }
@@ -143,7 +176,7 @@ function normalizeStatus(value: string): LeadStatus | null {
   }
 
   if (!normalized) {
-    return 'new';
+    return "new";
   }
 
   return null;
@@ -153,34 +186,57 @@ function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function splitCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = '';
+function parseRecords(content: string): { rows: string[][]; error?: string } {
+  const rows: string[][] = [];
+  let values: string[] = [];
+  let current = "";
   let inQuotes = false;
+  let closedQuote = false;
 
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
 
     if (char === '"') {
-      const next = line[index + 1];
+      const next = content[index + 1];
       if (inQuotes && next === '"') {
         current += '"';
         index += 1;
+      } else if (inQuotes) {
+        inQuotes = false;
+        closedQuote = true;
       } else {
-        inQuotes = !inQuotes;
+        if (current.trim() || closedQuote)
+          return { rows, error: "Unexpected quote in CSV field" };
+        current = "";
+        inQuotes = true;
       }
       continue;
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === "," && !inQuotes) {
       values.push(current);
-      current = '';
+      current = "";
+      closedQuote = false;
       continue;
     }
+
+    if (!inQuotes && (char === "\n" || char === "\r")) {
+      if (char === "\r" && content[index + 1] === "\n") index++;
+      values.push(current);
+      rows.push(values);
+      values = [];
+      current = "";
+      closedQuote = false;
+      continue;
+    }
+    if (closedQuote && !/\s/.test(char))
+      return { rows, error: "Unexpected text after closing quote" };
 
     current += char;
   }
 
+  if (inQuotes) return { rows, error: "Unclosed quoted CSV field" };
   values.push(current);
-  return values;
+  rows.push(values);
+  return { rows };
 }
