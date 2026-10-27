@@ -155,8 +155,8 @@ export function MergeContacts({
               value={keepTask}
               onChange={(e) => setKeepTask(e.target.value)}
             >
-              <option value="target">Keep surviving contact's task</option>
-              <option value="source">Keep incoming contact's task</option>
+              <option value="target">Keep surviving contact task</option>
+              <option value="source">Keep incoming contact task</option>
             </select>
           </label>
           <p>
