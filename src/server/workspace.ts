@@ -1,3 +1,5 @@
+import { expectedRevision } from "./followups";
+import { followupCommand } from "./followups";
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import type { Access } from "./access";
@@ -13,6 +15,8 @@ export async function snapshot(ctx: Access) {
         where: { workspaceId: ctx.workspaceId },
         orderBy: { createdAt: "asc" },
         include: {
+          tasks: { orderBy: { createdAt: "desc" } },
+          interactions: { orderBy: { occurredAt: "desc" } },
           drafts: {
             orderBy: { createdAt: "desc" },
             include: { revisions: { orderBy: { revision: "desc" } } },
@@ -30,6 +34,10 @@ export async function snapshot(ctx: Access) {
         where: { workspaceId: ctx.workspaceId },
         orderBy: { createdAt: "desc" },
         take: 100,
+      }),
+      settings: await tx.organization.findUnique({
+        where: { id: ctx.workspaceId },
+        select: { timezone: true, name: true },
       }),
       workspace: {
         id: ctx.workspaceId,
@@ -96,6 +104,16 @@ async function event(
 export async function command(value: unknown, ctx: Access) {
   const input = object(value);
   const action = text(input.action, "Action", 40);
+  if (
+    [
+      "logInteraction",
+      "scheduleTask",
+      "rescheduleTask",
+      "completeTask",
+      "cancelTask",
+    ].includes(action)
+  )
+    return followupCommand(input, ctx);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {
@@ -104,6 +122,7 @@ export async function command(value: unknown, ctx: Access) {
           ...fields,
           workspaceId: ctx.workspaceId,
           hotLead: fields.status === "HOT",
+          ownerId: ctx.userId,
         },
       });
       await event(tx, lead.id, "CREATED", { name: lead.name });
@@ -208,7 +227,7 @@ export async function command(value: unknown, ctx: Access) {
     );
     return db.$transaction(async (tx) => {
       const current = await requireLead(tx, ctx, id);
-      if (current.updatedAt.getTime() !== lead.updatedAt.getTime())
+      if (current.version !== lead.version)
         throw new RequestError(
           "Lead changed while generating. Please try again.",
           409,
@@ -258,14 +277,21 @@ export async function command(value: unknown, ctx: Access) {
             `Cannot move ${lead.status} to ${fields.status}.`,
             409,
           );
+        expectedRevision(input.version, lead.version);
         await tx.lead.update({
           where: { id },
           data: {
+            version: { increment: 1 },
             ...fields,
             workspaceId: ctx.workspaceId,
             hotLead: fields.status === "HOT",
           },
         });
+        if (fields.unsubscribed || ["WON", "LOST"].includes(fields.status))
+          await tx.followUpTask.updateMany({
+            where: { leadId: id, status: "OPEN" },
+            data: { status: "CANCELLED", revision: { increment: 1 } },
+          });
         await event(
           tx,
           id,
@@ -277,6 +303,7 @@ export async function command(value: unknown, ctx: Access) {
           after: fields,
         });
       } else if (action === "deleteLead") {
+        expectedRevision(input.version, lead.version);
         await audit(tx, ctx, "lead.deleted", "lead", id, lead);
         await tx.lead.delete({ where: { id } });
       } else if (action === "addNote") {
@@ -284,7 +311,7 @@ export async function command(value: unknown, ctx: Access) {
         await tx.leadNote.create({ data: { leadId: id, body } });
         await tx.lead.update({
           where: { id },
-          data: { updatedAt: new Date() },
+          data: { version: { increment: 1 } },
         });
         await event(tx, id, "NOTE_ADDED", { body });
         await audit(tx, ctx, "note.created", "lead", id, { body });

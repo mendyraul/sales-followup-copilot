@@ -77,7 +77,7 @@ function reasonFor(lead: Lead, ageHours: number, band: NextActionBand): string {
 }
 
 export function getNextAction(lead: Lead, now = new Date()): NextAction {
-  const ageHours = ageHoursSince(lead.updatedAt, now);
+  const ageHours = ageHoursSince(lead.lastContactedAt === undefined ? lead.updatedAt : (lead.lastContactedAt ?? lead.createdAt), now);
   const score = statusWeights[lead.status] + Math.min(72, ageHours);
   const band = bandFor(score);
 

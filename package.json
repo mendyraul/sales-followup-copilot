@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.14",
+    "@js-temporal/polyfill": "^0.5.1",
     "@prisma/client": "5.18.0",
     "better-auth": "^1.7.14",
     "googleapis": "^188.0.0",
