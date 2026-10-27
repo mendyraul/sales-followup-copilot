@@ -192,7 +192,7 @@ test("saved writing profiles shape local drafts and keep their source context", 
     await page
       .getByRole("button", { name: "Generate draft", exact: true })
       .click();
-    await expect(page.getByLabel("Draft body", { exact: true })).toHaveValue(
+    await expect(page.getByRole("textbox", { name: "Draft body", exact: true })).toHaveValue(
       /Cheers,\nYour consultant/,
     );
     const data = await (await page.request.get("/api/workspace")).json();
