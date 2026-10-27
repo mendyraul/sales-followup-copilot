@@ -6,6 +6,7 @@ import { access } from '../server/access';
 import { appUrl } from '../server/config';
 import { db } from '../server/db';
 import { command, snapshot } from '../server/workspace';
+import { exportWorkspace,validateBackup,restoreWorkspace } from '../server/exports';
 if(existsSync('.env'))process.loadEnvFile('.env');
 const enabled=!!process.env.DATABASE_URL&&new URL(process.env.DATABASE_URL).pathname.endsWith('_test');
 describe.skipIf(!enabled)('authenticated workspace isolation',()=>{
@@ -25,5 +26,18 @@ describe.skipIf(!enabled)('authenticated workspace isolation',()=>{
   const task=saved.tasks[0];await command({action:'rescheduleTask',leadId,taskId:task.id,revision:task.revision,snoozeDays:1},ctx);
   await expect(command({action:'completeTask',leadId,taskId:task.id,revision:task.revision},ctx)).rejects.toMatchObject({status:409});
   await expect(command({...input,requestKey:crypto.randomUUID(),localDueAt:'bad date',dueAt:undefined},ctx)).rejects.toMatchObject({status:400});expect(await db.interaction.count({where:{leadId}})).toBe(1);
+ });
+
+ it('reviews duplicate merges and restores full history into a separate workspace',async()=>{
+  const name='Same Name '+crypto.randomUUID();const email='merge-'+crypto.randomUUID()+'@example.com';
+  const source=await db.lead.create({data:{workspaceId:ctxA.workspaceId,name,email,normalizedEmail:email}});const target=await db.lead.create({data:{workspaceId:ctxA.workspaceId,name,email,normalizedEmail:email}});expect(source.id).not.toBe(target.id);
+  await command({action:'addNote',leadId:source.id,body:'Preserve the source note'},ctxA);await command({action:'generateDraft',leadId:source.id},ctxA);await command({action:'scheduleTask',leadId:source.id,title:'Keep this task',dueAt:'2030-01-01T10:00:00Z'},ctxA);
+  const current=await db.lead.findUniqueOrThrow({where:{id:source.id}});
+  await command({action:'mergeLeads',sourceId:source.id,targetId:target.id,sourceVersion:current.version,targetVersion:target.version,fields:target,keepTask:'source'},ctxA);
+  const survivor=await db.lead.findUniqueOrThrow({where:{id:target.id},include:{timelineNotes:true,drafts:{include:{revisions:true}},tasks:true}});expect(survivor.timelineNotes).toHaveLength(1);expect(survivor.drafts[0].revisions).toHaveLength(1);expect(survivor.tasks[0].status).toBe('OPEN');expect((await snapshot(ctxA)).leads.some(l=>l.id===source.id)).toBe(false);
+  const exported=await exportWorkspace(ctxA);const checked=validateBackup(exported);expect(JSON.stringify(exported)).not.toContain('Example-test-password');
+  const restored=await restoreWorkspace(exported,ctxA,checked.digest);ids.push(restored.workspaceId);const restoredLead=await db.lead.findFirstOrThrow({where:{workspaceId:restored.workspaceId,name,mergedAt:null},include:{timelineNotes:true,drafts:{include:{revisions:true}},tasks:true}});expect(restoredLead.id).not.toBe(target.id);expect(restoredLead.ownerId).toBeNull();expect(restoredLead.tasks[0].assigneeId).toBeNull();expect(restoredLead.timelineNotes[0].body).toBe('Preserve the source note');expect(restoredLead.drafts[0].revisions).toHaveLength(1);
+  await expect(exportWorkspace({...ctxA,role:'member'})).rejects.toMatchObject({status:403});
+  const csv='name,email\nIncoming,'+email;await expect(command({action:'importCsv',csv},ctxA)).rejects.toMatchObject({status:409});const preview=await command({action:'previewImport',csv},ctxA);if(!('digest' in preview))throw new Error('Preview missing');await command({action:'importCsv',csv,digest:preview.digest,decisions:[{rowNumber:2,action:'create'}]},ctxA);expect(await db.lead.count({where:{workspaceId:ctxA.workspaceId,email,mergedAt:null}})).toBe(2);
  });
 });

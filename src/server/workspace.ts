@@ -1,3 +1,4 @@
+import { dataCommand } from "./data-management";
 import { expectedRevision } from "./followups";
 import { followupCommand } from "./followups";
 import { Prisma } from "@prisma/client";
@@ -5,14 +6,13 @@ import { db } from "./db";
 import type { Access } from "./access";
 import { bool, leadFields, object, RequestError, text } from "./validation";
 import { canTransition, type LeadStatus as DomainStatus } from "../domain/lead";
-import { parseLeadCsvPreview } from "../domain/csv-import";
 import { generateFirstFollowupDraft } from "../../lib/firstFollowupDraft";
 
 export async function snapshot(ctx: Access) {
   return db.$transaction(
     async (tx) => ({
       leads: await tx.lead.findMany({
-        where: { workspaceId: ctx.workspaceId },
+        where: { workspaceId: ctx.workspaceId, mergedAt: null },
         orderBy: { createdAt: "asc" },
         include: {
           tasks: { orderBy: { createdAt: "desc" } },
@@ -81,6 +81,11 @@ async function requireLead(
   const lead = await tx.lead.findFirst({
     where: { id, workspaceId: ctx.workspaceId },
   });
+  if (lead?.mergedAt)
+    throw new RequestError(
+      "Contact was merged. Resolve its current ID first.",
+      409,
+    );
   if (!lead)
     throw new RequestError("Lead not found. Refresh the workspace.", 404);
   return lead;
@@ -114,6 +119,15 @@ export async function command(value: unknown, ctx: Access) {
     ].includes(action)
   )
     return followupCommand(input, ctx);
+  if (
+    [
+      "previewImport",
+      "importCsv",
+      "duplicateCandidates",
+      "mergeLeads",
+    ].includes(action)
+  )
+    return dataCommand(input, ctx);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {
@@ -128,42 +142,6 @@ export async function command(value: unknown, ctx: Access) {
       await event(tx, lead.id, "CREATED", { name: lead.name });
       await audit(tx, ctx, "lead.created", "lead", lead.id, fields);
       return { id: lead.id };
-    });
-  }
-  if (action === "importCsv") {
-    const preview = parseLeadCsvPreview(text(input.csv, "CSV", 80000));
-    if (
-      preview.missingHeaders.length ||
-      preview.unknownHeaders.length ||
-      preview.issues.length ||
-      preview.duplicateEmails.length ||
-      !preview.validRows.length ||
-      preview.validRows.length > 200
-    ) {
-      throw new RequestError(
-        "Import requires 1–200 valid rows, name and email headers, accepted columns, and no duplicate emails. Fix the preview errors first.",
-      );
-    }
-    return db.$transaction(async (tx) => {
-      for (const row of preview.validRows) {
-        const fields = leadFields({ ...row, status: row.status.toUpperCase() });
-        if (
-          await tx.lead.findFirst({
-            where: { email: fields.email, workspaceId: ctx.workspaceId },
-          })
-        )
-          throw new RequestError(`Email already exists: ${row.email}`, 409);
-        const lead = await tx.lead.create({
-          data: {
-            ...fields,
-            workspaceId: ctx.workspaceId,
-            hotLead: fields.status === "HOT",
-          },
-        });
-        await event(tx, lead.id, "CREATED", { source: "csv" });
-        await audit(tx, ctx, "lead.imported", "lead", lead.id, fields);
-      }
-      return { imported: preview.validRows.length };
     });
   }
   if (action === "feedback") {

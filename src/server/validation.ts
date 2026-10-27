@@ -1,3 +1,4 @@
+import { normalizedEmail, normalizedPhone } from "../domain/contacts";
 export class RequestError extends Error {
   constructor(
     message: string,
@@ -53,6 +54,8 @@ export function leadFields(input: Record<string, unknown>) {
     throw new RequestError("Enter a valid email address.");
   return {
     name: text(input.name, "Name", 200),
+    normalizedEmail: normalizedEmail(email),
+    normalizedPhone: normalizedPhone(text(input.phone, "Phone", 80, true)),
     email: email || null,
     phone: text(input.phone, "Phone", 80, true) || null,
     source: text(input.source, "Source", 200, true) || null,

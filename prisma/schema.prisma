@@ -17,6 +17,14 @@ enum LeadStatus {
 }
 
 model Lead {
+  normalizedEmail String?
+  normalizedPhone String?
+  mergedIntoId String?
+  mergedAt DateTime?
+  mergedInto Lead? @relation("MergedLead", fields:[mergedIntoId], references:[id], onDelete:SetNull)
+  mergedFrom Lead[] @relation("MergedLead")
+  @@index([workspaceId,normalizedEmail])
+  @@index([workspaceId,normalizedPhone])
   version Int @default(1)
   lastContactedAt DateTime?
   lastReplyAt DateTime?
@@ -27,7 +35,7 @@ model Lead {
   workspace Organization @relation(fields: [workspaceId], references: [id])
   @@index([workspaceId])
   id            String      @id @default(cuid())
-  name          String      @unique
+  name          String
   email         String?
   phone         String?
   source        String?
@@ -117,6 +125,7 @@ model FeedbackEntry {
 }
 
 model AuditLog {
+  actorLabel String?
   actorId String?
   workspaceId String @default("legacy")
   workspace Organization @relation(fields: [workspaceId], references: [id])
@@ -241,6 +250,7 @@ model FollowUpTask {
   @@index([status,dueAt])
 }
 model Interaction {
+  actorLabel String?
   id String @id @default(cuid())
   leadId String
   channel String
