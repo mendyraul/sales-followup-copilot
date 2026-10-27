@@ -596,3 +596,12 @@ footer {
   text-decoration: none;
   font-size: 13px;
 }
+.tabs {
+  flex-wrap: wrap;
+  gap: 10px 26px;
+}
+.merge-fields {
+  display: grid;
+  gap: 0 12px;
+  grid-template-columns: minmax(0, 1fr);
+}

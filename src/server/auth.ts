@@ -1,3 +1,5 @@
+import { sendOperatorEmail, smtpConfigured } from "./mail";
+import { unassignRemovedMember } from "./team";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { organization } from "better-auth/plugins";
@@ -18,10 +20,13 @@ function createAuth(bootstrap = false) {
     databaseHooks: {
       user: {
         create: {
-          before: async (user) => {
+          before: async (user, context) => {
             if (bootstrap) return;
             const invitation = await db.invitation.findFirst({
               where: {
+                id:
+                  context?.headers?.get("x-invitation-id") ||
+                  "missing-invitation-token",
                 email: user.email.toLowerCase(),
                 status: "pending",
                 expiresAt: { gt: new Date() },
@@ -39,6 +44,40 @@ function createAuth(bootstrap = false) {
     plugins: [
       organization({
         allowUserToCreateOrganization: true,
+        disableOrganizationDeletion: true,
+        sendInvitationEmail: async (data) => {
+          if (smtpConfigured())
+            try {
+              await sendOperatorEmail(
+                data.email,
+                "Join " + data.organization.name,
+                appUrl() +
+                  "/accept-invitation?id=" +
+                  encodeURIComponent(data.id),
+              );
+            } catch {
+              console.error(
+                "Invitation email failed. Share the invitation link directly.",
+              );
+            }
+        },
+        organizationHooks: {
+          beforeCreateInvitation: async ({ invitation }) => {
+            if (!["owner", "member"].includes(invitation.role))
+              throw new APIError("BAD_REQUEST", {
+                message: "Choose owner or member.",
+              });
+          },
+          beforeUpdateMemberRole: async ({ newRole }) => {
+            if (!["owner", "member"].includes(newRole))
+              throw new APIError("BAD_REQUEST", {
+                message: "Choose owner or member.",
+              });
+          },
+          beforeRemoveMember: async ({ member, organization }) => {
+            await unassignRemovedMember(organization.id, member.userId);
+          },
+        },
         invitationExpiresIn: 60 * 60 * 24 * 7,
       }),
     ],

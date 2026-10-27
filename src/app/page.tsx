@@ -3,6 +3,13 @@ import Link from "next/link";
 import { FollowupPanel, type Task, type Interaction } from "./followup-panel";
 import { dayWindow } from "../domain/dates";
 import { MergeContacts, ImportReview, DataTools } from "./data-tools";
+import {
+  TeamSettings,
+  Notifications,
+  type Member,
+  type Notice,
+  type Preferences,
+} from "./team-settings";
 import { WorkspaceBar } from "./workspace-bar";
 import React, {
   FormEvent,
@@ -33,6 +40,7 @@ type Draft = {
   }[];
 };
 type Lead = {
+  ownerId: string | null;
   version: number;
   lastContactedAt: string | null;
   lastReplyAt: string | null;
@@ -58,6 +66,15 @@ type Lead = {
   }[];
 };
 type Workspace = {
+  members: Member[];
+  notifications: Notice[];
+  preferences: Preferences;
+  capabilities: { smtp: boolean };
+  worker: {
+    online:boolean; seenAt: string;
+    successAt: string | null;
+    errorCode: string | null;
+  } | null;
   settings: { timezone: string; name: string };
   workspace: { id: string; role: string; userId: string | null; demo: boolean };
   leads: Lead[];
@@ -80,6 +97,7 @@ export default function HomePage() {
   const [data, setData] = useState<Workspace>();
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
+  const [ownership, setOwnership] = useState("ALL");
   const [taskView, setTaskView] = useState("ALL");
   const [filter, setFilter] = useState("ALL");
   const [tab, setTab] = useState("queue");
@@ -161,6 +179,12 @@ export default function HomePage() {
   );
   const taskWindow = dayWindow(data?.settings.timezone || "UTC");
   const visible = (data?.leads ?? [])
+    .filter(
+      (l) =>
+        ownership === "ALL" ||
+        (ownership === "MINE" && l.ownerId === data?.workspace.userId) ||
+        (ownership === "UNASSIGNED" && !l.ownerId),
+    )
     .filter((l) => {
       const task = l.tasks.find((t) => t.status === "OPEN");
       return (
@@ -310,7 +334,39 @@ export default function HomePage() {
             >
               Activity & feedback
             </button>
+            <button
+              className={tab === "notifications" ? "active" : ""}
+              onClick={() => setTab("notifications")}
+            >
+              Notifications (
+              {data.notifications.filter((n) => !n.readAt).length})
+            </button>
+            <button
+              className={tab === "settings" ? "active" : ""}
+              onClick={() => setTab("settings")}
+            >
+              Settings & team
+            </button>
           </nav>
+          {tab === "settings" && (
+            <TeamSettings
+              workspace={data.workspace}
+              settings={data.settings}
+              members={data.members}
+              preferences={data.preferences}
+              capabilities={data.capabilities}
+              worker={data.worker}
+              mutate={mutate}
+              busy={busy}
+            />
+          )}
+          {tab === "notifications" && (
+            <Notifications
+              notices={data.notifications}
+              mutate={mutate}
+              busy={busy}
+            />
+          )}
           {tab === "new" && (
             <section className="panel narrow">
               <p className="eyebrow">GROW YOUR PIPELINE</p>
@@ -346,6 +402,17 @@ export default function HomePage() {
                     {statuses.map((s) => (
                       <option key={s}>{s}</option>
                     ))}
+                  </select>
+                </label>
+                <label>
+                  Owner filter
+                  <select
+                    value={ownership}
+                    onChange={(e) => setOwnership(e.target.value)}
+                  >
+                    <option value="ALL">Team</option>
+                    <option value="MINE">Mine</option>
+                    <option value="UNASSIGNED">Unassigned</option>
                   </select>
                 </label>
                 <label>
@@ -448,6 +515,30 @@ export default function HomePage() {
                         }}
                       >
                         <LeadFields lead={lead} />
+                        <label>
+                          Lead owner
+                          <select
+                            value={lead.ownerId || ""}
+                            onChange={(e) =>
+                              void mutate(
+                                {
+                                  action: "assignLead",
+                                  leadId: lead.id,
+                                  version: lead.version,
+                                  ownerId: e.target.value,
+                                },
+                                "Lead reassigned.",
+                              )
+                            }
+                          >
+                            <option value="">Unassigned</option>
+                            {data.members.map((m) => (
+                              <option key={m.userId} value={m.userId}>
+                                {m.user.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <label className="check">
                           <input
                             name="unsubscribed"
