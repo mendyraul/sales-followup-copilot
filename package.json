@@ -1,7 +1,7 @@
 {
   "name": "sales-followup-copilot",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prisma": {
     "seed": "node prisma/seed.mjs"
   },
@@ -19,11 +19,12 @@
     "demo": "node scripts/demo.mjs",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
-    "format": "prettier --write src/app src/server e2e playwright.config.ts vitest.config.ts eslint.config.mjs scripts prisma/seed.mjs docs README.md",
+    "format": "prettier --write src/app src/server e2e playwright.config.ts vitest.config.ts eslint.config.mjs scripts prisma/seed.mjs docs README.md CONTRIBUTING.md SECURITY.md",
     "account:owner": "tsx scripts/account.mts",
     "start:server": "next start --hostname 0.0.0.0",
     "setup": "node scripts/setup.mjs",
-    "worker": "tsx scripts/worker.mts"
+    "worker": "tsx scripts/worker.mts",
+    "backup": "sh scripts/backup.sh"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.14",
@@ -54,5 +55,11 @@
   },
   "engines": {
     "node": ">=22.12.0"
+  },
+  "license": "MIT",
+  "description": "Free, self-hostable follow-up workspace for consultants and small agencies",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mendyraul/sales-followup-copilot.git"
   }
 }

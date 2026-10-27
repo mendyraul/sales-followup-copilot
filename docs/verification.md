@@ -1,24 +1,11 @@
-# Demo verification · 2026-10-27
+# Verification
 
-The previous dashboard rendered static fixtures. This release connects the operator workflow to PostgreSQL through validated, transactional commands.
+The CI `verify` job is required before merging. It installs locked dependencies on Node 22, audits moderate-or-higher advisories, checks lint/types, applies migrations to PostgreSQL 16, seeds fictional data, runs unit/integration tests, verifies a legacy upgrade, builds the production app and runs Playwright against separate demo/authenticated servers.
 
-Local checks passed: lint, TypeScript, 151 unit tests, production build, and three production browser scenarios. The dependency audit reports zero vulnerabilities. Browser checks use a separate database and actual API writes, with no network interception or provider calls. They verify persistence after reload, review revision history and concurrency conflicts, opt-out enforcement, feedback, import rollback, cross-origin validation, and a 390px layout. An additional legacy migration rehearsal preserves an existing lead and approved draft, backfilling revision 1 with its original text.
+Integration coverage includes workspace isolation, denied public signup, atomic contact logging, stale task revisions, duplicate review/merge, complete backup restore, durable notification deduplication/retries/uncertain delivery, selected writing context, encrypted Gmail OAuth state replay protection, idempotent message sync and queue/history pagination. Provider boundaries use explicit fixtures; no live email, Gmail or paid AI calls are made.
 
-CI repeats these checks on a clean install with disposable Postgres databases. Optional external AI calls, public authentication, and delivery are outside the local demo; no message is sent by any workspace action.
+Browser coverage exercises saved CRUD, notes, draft decisions/revisions, opt-out, atomic imports, malformed/foreign-origin requests, schedule/snooze/completion, authenticated export/restore, invitations/handoffs/removal, writing profiles, persistent onboarding, feedback preview and mobile width. All fixtures use fictional accounts and data. Exact counts are visible in each CI run and may increase as coverage grows.
 
-## Open issue coverage
+Use only a database whose name ends in `_test` for integration/browser checks. Set DATABASE_URL before migration/build, supply a random test BETTER_AUTH_SECRET, and run the README commands. The suite creates and deletes records and browser account sessions. The legacy upgrade script requires its own disposable `_test` database.
 
-| Issues       | Delivered evidence                                                                                                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #1, #2       | Existing repository and frontend/domain structure, now with a functional API/server layer.                                                                                    |
-| #3           | Committed Prisma migrations, persistent leads/notes/events/drafts/revisions/feedback/audit, fresh and legacy-upgrade verification.                                            |
-| #4, #5       | Create, edit, delete and status transitions through the UI/API; validated transitions, opt-out and closed-lead handling; persisted browser coverage.                          |
-| #6           | Responsive database-backed pipeline, search/status filters, urgency/stale indicators and queue counts.                                                                        |
-| #7, #30      | Rewritten README with reproducible demo command, developer setup, walkthrough, migration guidance and accurate operating limits.                                              |
-| #8           | CI for PRs and main pushes: clean install, audit, lint/type/unit/build, fresh migrations, legacy upgrade and real browser tests.                                              |
-| #9, #10, #11 | Existing tested provider contract and prompt builder connected to saved lead context, mock draft generation and revisioned human review. No live call is needed for the demo. |
-| #15          | Audit writes in the same transactions as mutations, visible activity log and deletion records retained.                                                                       |
-| #22          | Saved notes and lead timeline, surfaced to draft generation and verified across reloads.                                                                                      |
-| #23          | Domain/provider tests plus real Postgres/browser workflows replacing static fixture/README-heading assertions.                                                                |
-| #25          | Updated executable manual QA walkthrough and automated core coverage.                                                                                                         |
-| #29          | Persisted in-app feedback with validation, channel, feature flag, related lead and audit entry.                                                                               |
+Release workflows additionally build production-only Docker images for two architectures and test a fresh Compose stack: migrations, hidden-CLI owner creation, authenticated API access, worker heartbeat and a database dump/restore into another database. Public release assets have SHA-256 checksums. This does not replace operator testing of an actual hosted domain, provider accounts or off-host backup recovery.

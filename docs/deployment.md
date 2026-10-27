@@ -1,30 +1,18 @@
-# Local deployment and migrations
+# Deployment and migrations
 
-This release targets a local, single-operator demonstration. The default development and production start commands bind to 127.0.0.1. There is no authentication. Add authentication, authorization, tenant isolation, and a deployment-specific security review before exposing it publicly.
+See [self-hosting](self-hosting.md) for authenticated Docker installation, backups and optional remote hosting. The fictional demo has a separate Compose file and volume; do not point tests at real data.
 
-## Fresh database
+Eight committed migrations cover the initial schema, draft revisions, accounts/workspaces, true contact timestamps/tasks, merges/portability, durable reminders/team assignments, Gmail/writing profiles and onboarding. Existing records stay in the `legacy` workspace; the first bootstrapped owner claims that workspace. Names are no longer unique. Never regenerate the initial migration to install an upgrade.
 
-Run `npm ci`, `docker compose up -d --wait db`, `npm run db:migrate`, and optionally `npm run db:seed`. Migrations are committed; do not generate a new initial migration during setup. `npm run demo` runs this flow and starts a production build automatically.
+For a database originally created by `prisma db push`, back it up and confirm it exactly matches commit `68aad43`'s original schema before baselining:
 
-## Existing database created with the original schema
-
-Back up the database first. A database created by `prisma db push` or the old README has no migration history. Confirm it exactly matches `git show 68aad43:prisma/schema.prisma` before baselining. Do not mark a migration applied unless its tables and constraints already exist.
-
-```bash
+```sh
 npx prisma migrate resolve --applied 202610270001_initial
 npm run db:migrate
 ```
 
-The second migration adds draft metadata and revision history without dropping leads, notes, feedback, drafts, or audit records. It backfills existing draft text as revision 1. Databases with another migration history or schema drift require a reviewed reconciliation; do not reset or drop them.
+Only mark a migration applied when its schema already exists. Drift or a different migration history requires reconciliation, not a reset. The legacy migration verification script tests preserving records through the committed migrations in a disposable `_test` database.
 
-## Release checks
+CI runs dependency audit, lint, types, real PostgreSQL integration tests, upgrade preservation, production build and browser workflows. Release archives build on native x86-64/ARM runners, start a fresh database, apply migrations, bootstrap a fictional account and verify authenticated access and worker health before upload. Images contain production dependencies including the owner CLI and worker, run as a non-root user, and exclude environment files and backups.
 
-Run lint, typecheck, unit tests, dependency audit, production build, then browser tests against a separate test database. CI performs all of these. Browser tests save and reload actual records, check draft review conflicts, validate imports atomically, and check the mobile layout. See `docs/manual-qa.md` for the operator walkthrough.
-
-Stop an existing server before building in the same checkout. Start with `npm run start -- --port 3115`. Confirm `/api/workspace` returns HTTP 200 and the dashboard shows saved contacts. Database failures return HTTP 503 with an actionable retry state rather than presenting fixture data as saved data.
-
-## Persistence and backups
-
-The Compose volume `sales-followup-demo_pgdata` retains records after app/container restarts. `docker compose stop db` keeps it. Do not use `docker compose down -v` unless you intend to erase all local demo data. Use standard `pg_dump`/`pg_restore` with the credentials in your local environment when preserving records.
-
-Audit records survive lead deletion; related lead notes, timeline events and drafts are deleted, and feedback is retained with its lead relation cleared. No automatic sending exists in this release.
+Keep the app and worker on the same version. Preserve `.env` secrets and volumes; stop a source server before writing its `.next` directory. No automatic process sends prospect email, including after approval. No external analytics are enabled. Configure provider services only after testing their actual accounts and permissions.

@@ -1,3 +1,5 @@
+import { onboardingCommand } from "./onboarding";
+import { leadPage } from "./pagination";
 import { gmailEnabled, gmailStatus } from "./gmail";
 import { generateSavedDraft, saveWritingProfile } from "./writing";
 import { workerStatus } from "./reminders";
@@ -12,84 +14,176 @@ import type { Access } from "./access";
 import { bool, leadFields, object, RequestError, text } from "./validation";
 import { canTransition, type LeadStatus as DomainStatus } from "../domain/lead";
 
-export async function snapshot(ctx: Access) {
+export async function snapshot(ctx: Access, params = new URLSearchParams()) {
   return db.$transaction(
-    async (tx) => ({
-      leads: await tx.lead.findMany({
-        where: { workspaceId: ctx.workspaceId, mergedAt: null },
-        orderBy: { createdAt: "asc" },
-        include: {
-          mailThreads: {
-            include: { messages: { orderBy: { occurredAt: "desc" } } },
+    async (tx) => {
+      const page = await leadPage(tx, ctx, params);
+      const include = {
+        tasks: { orderBy: { createdAt: "desc" as const }, take: 20 },
+        interactions: { orderBy: { occurredAt: "desc" as const }, take: 20 },
+        drafts: {
+          orderBy: { createdAt: "desc" as const },
+          take: 20,
+          include: {
+            revisions: { orderBy: { revision: "desc" as const }, take: 100 },
           },
-          tasks: { orderBy: { createdAt: "desc" } },
-          interactions: { orderBy: { occurredAt: "desc" } },
-          drafts: {
-            orderBy: { createdAt: "desc" },
-            include: { revisions: { orderBy: { revision: "desc" } } },
+        },
+        timelineNotes: {
+          orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+          take: 20,
+        },
+        events: {
+          orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+          take: 20,
+        },
+        mailThreads: {
+          include: {
+            messages: { orderBy: { occurredAt: "desc" as const }, take: 20 },
           },
-          timelineNotes: { orderBy: { createdAt: "desc" } },
-          events: { orderBy: { createdAt: "desc" } },
+          take: 20,
         },
-      }),
-      audit: await tx.auditLog.findMany({
-        where: { workspaceId: ctx.workspaceId },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      }),
-      feedback: await tx.feedbackEntry.findMany({
-        where: { workspaceId: ctx.workspaceId },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      }),
-      members: await tx.member.findMany({
-        where: { organizationId: ctx.workspaceId },
-        select: {
-          id: true,
-          userId: true,
-          role: true,
-          user: { select: { name: true, email: true } },
-        },
-      }),
-      notifications: ctx.userId
-        ? await tx.notification.findMany({
-            where: { workspaceId: ctx.workspaceId, userId: ctx.userId },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-          })
-        : [],
-      preferences: ctx.userId
-        ? await tx.notificationPreference.findUnique({
-            where: {
-              workspaceId_userId: {
-                workspaceId: ctx.workspaceId,
-                userId: ctx.userId,
+      };
+      const records = await tx.lead.findMany({
+        where: { workspaceId: ctx.workspaceId, id: { in: page.ids } },
+        include,
+      });
+      let selectedId = params.get("selected");
+      let selectedLead = null;
+      for (let i = 0; selectedId && i < 20; i++) {
+        const selected = await tx.lead.findFirst({
+          where: { id: selectedId, workspaceId: ctx.workspaceId },
+          include,
+        });
+        if (!selected) break;
+        if (!selected.mergedAt) {
+          selectedLead = selected;
+          break;
+        }
+        selectedId = selected.mergedIntoId;
+      }
+      const all = { workspaceId: ctx.workspaceId, mergedAt: null };
+      const active = {
+        ...all,
+        unsubscribed: false,
+        status: { notIn: ["WON", "LOST"] as ("WON" | "LOST")[] },
+      };
+      return {
+        leads: page.ids.map((id) => records.find((l) => l.id === id)!),
+        selectedLead,
+        canonicalLeadId: selectedLead?.id ?? null,
+        pagination: { nextCursor: page.nextCursor, total: page.total },
+        onboarding: {
+          dismissed: !!(
+            await tx.onboardingState.findUnique({
+              where: {
+                workspaceId_userId: {
+                  workspaceId: ctx.workspaceId,
+                  userId: ctx.userId || "demo",
+                },
               },
-            },
-          })
-        : null,
-      capabilities: { smtp: smtpConfigured(), gmail: gmailEnabled() },
-      inbox: await gmailStatus(ctx),
-      writingProfile: await tx.writingProfile.findUnique({
-        where: { workspaceId: ctx.workspaceId },
-      }),
-      worker: await workerStatus(tx),
-      settings: await tx.organization.findUnique({
-        where: { id: ctx.workspaceId },
-        select: { timezone: true, name: true },
-      }),
-      workspace: {
-        id: ctx.workspaceId,
-        role: ctx.role,
-        userId: ctx.userId,
-        demo: ctx.demo,
-      },
-      mode: {
-        sending: "disabled",
-        provider: process.env.AI_PROVIDER || "mock",
-      },
-    }),
-    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+            })
+          )?.dismissedAt,
+          contacts: await tx.lead.count({ where: all }),
+          scheduled: await tx.followUpTask.count({ where: { lead: all } }),
+          interactions: await tx.interaction.count({ where: { lead: all } }),
+          drafted: await tx.followUpDraft.count({ where: { lead: all } }),
+        },
+        usage:
+          ctx.role === "owner"
+            ? {
+                overdue: await tx.followUpTask.count({
+                  where: {
+                    status: "OPEN",
+                    dueAt: { lt: new Date() },
+                    lead: active,
+                  },
+                }),
+                completed14d: await tx.auditLog.count({
+                  where: {
+                    workspaceId: ctx.workspaceId,
+                    action: "task.completeTask",
+                    createdAt: { gte: new Date(Date.now() - 14 * 86400000) },
+                  },
+                }),
+                activeDays14d: Number(
+                  (
+                    await tx.$queryRaw<
+                      { count: bigint }[]
+                    >`SELECT COUNT(DISTINCT DATE("createdAt")) AS count FROM "AuditLog" WHERE "workspaceId"=${ctx.workspaceId} AND "createdAt">=${new Date(Date.now() - 14 * 86400000)}`
+                  )[0].count,
+                ),
+              }
+            : null,
+        summary: {
+          total: await tx.lead.count({ where: all }),
+          attention: await tx.lead.count({ where: active }),
+          hot: await tx.lead.count({ where: { ...active, status: "HOT" } }),
+          pendingDrafts: await tx.followUpDraft.count({
+            where: { approved: false, rejected: false, lead: active },
+          }),
+        },
+        audit: await tx.auditLog.findMany({
+          where: { workspaceId: ctx.workspaceId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 100,
+        }),
+        feedback: await tx.feedbackEntry.findMany({
+          where: { workspaceId: ctx.workspaceId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 100,
+        }),
+        members: await tx.member.findMany({
+          where: { organizationId: ctx.workspaceId },
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            user: { select: { name: true, email: true } },
+          },
+        }),
+        notifications: ctx.userId
+          ? await tx.notification.findMany({
+              where: { workspaceId: ctx.workspaceId, userId: ctx.userId },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 100,
+            })
+          : [],
+        preferences: ctx.userId
+          ? await tx.notificationPreference.findUnique({
+              where: {
+                workspaceId_userId: {
+                  workspaceId: ctx.workspaceId,
+                  userId: ctx.userId,
+                },
+              },
+            })
+          : null,
+        capabilities: { smtp: smtpConfigured(), gmail: gmailEnabled() },
+        worker: await workerStatus(tx),
+        inbox: await gmailStatus(ctx),
+        writingProfile: await tx.writingProfile.findUnique({
+          where: { workspaceId: ctx.workspaceId },
+        }),
+        settings: await tx.organization.findUnique({
+          where: { id: ctx.workspaceId },
+          select: { timezone: true, name: true },
+        }),
+        workspace: {
+          id: ctx.workspaceId,
+          role: ctx.role,
+          userId: ctx.userId,
+          demo: ctx.demo,
+        },
+        mode: {
+          sending: "disabled",
+          provider: process.env.AI_PROVIDER || "mock",
+        },
+      };
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 15000,
+    },
   );
 }
 
@@ -178,6 +272,8 @@ export async function command(value: unknown, ctx: Access) {
   )
     return teamCommand(input, ctx);
   if (action === "saveWritingProfile") return saveWritingProfile(input, ctx);
+  if (["dismissOnboarding", "resetOnboarding"].includes(action))
+    return onboardingCommand(action, ctx);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {

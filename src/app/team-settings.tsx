@@ -1,4 +1,5 @@
 "use client";
+import { HistoryList } from "./history-list";
 import { useState } from "react";
 export type Member = {
   id: string;
@@ -337,53 +338,57 @@ export function Notifications({
           app is closed.
         </p>
       )}
-      {notices.map((n) => (
-        <article className="feedback" key={n.id}>
-          <strong>{n.title}</strong>
-          <p>
-            {new Date(n.createdAt).toLocaleString()} · {n.emailState}
-            {n.errorCode ? " · " + n.errorCode : ""}
-          </p>
-          <div className="actions">
-            {!n.readAt && (
-              <button
-                className="secondary"
-                disabled={busy}
-                onClick={() =>
-                  void mutate(
-                    { action: "markNotificationRead", notificationId: n.id },
-                    "Notification marked read.",
-                  )
-                }
-              >
-                Mark read
-              </button>
-            )}
-            {["FAILED", "UNCERTAIN"].includes(n.emailState) && (
-              <button
-                className="secondary"
-                disabled={busy}
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Retry this email? An uncertain previous attempt may already have arrived.",
-                    )
-                  )
+      <HistoryList
+        items={notices}
+        kind="notifications"
+        render={(n) => (
+          <article className="feedback" key={n.id}>
+            <strong>{n.title}</strong>
+            <p>
+              {new Date(n.createdAt).toLocaleString()} · {n.emailState}
+              {n.errorCode ? " · " + n.errorCode : ""}
+            </p>
+            <div className="actions">
+              {!n.readAt && (
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() =>
                     void mutate(
-                      {
-                        action: "retryNotificationEmail",
-                        notificationId: n.id,
-                      },
-                      "Email queued for retry.",
-                    );
-                }}
-              >
-                Retry email
-              </button>
-            )}
-          </div>
-        </article>
-      ))}
+                      { action: "markNotificationRead", notificationId: n.id },
+                      "Notification marked read.",
+                    )
+                  }
+                >
+                  Mark read
+                </button>
+              )}
+              {["FAILED", "UNCERTAIN"].includes(n.emailState) && (
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Retry this email? An uncertain previous attempt may already have arrived.",
+                      )
+                    )
+                      void mutate(
+                        {
+                          action: "retryNotificationEmail",
+                          notificationId: n.id,
+                        },
+                        "Email queued for retry.",
+                      );
+                  }}
+                >
+                  Retry email
+                </button>
+              )}
+            </div>
+          </article>
+        )}
+      />
     </section>
   );
 }

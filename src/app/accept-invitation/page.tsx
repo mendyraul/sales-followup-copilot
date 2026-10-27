@@ -1,6 +1,8 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 export default function AcceptInvitation() {
+  const router = useRouter();
   const [error, setError] = useState("");
   return (
     <main className="auth-page">
@@ -46,7 +48,7 @@ export default function AcceptInvitation() {
                 throw new Error(
                   b.message || "Invitation could not be accepted.",
                 );
-              location.assign("/");
+              router.replace("/");
             } catch (e) {
               setError(e instanceof Error ? e.message : "Unable to join");
             }

@@ -11,3 +11,6 @@ STATUS.md
 test-results/
 playwright-report/
 *.log
+backups/
+*.dump
+*.dump.age

@@ -1,0 +1,21 @@
+name: Bug report
+description: Report a reproducible problem using fictional records.
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App version and installation mode
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include expected and actual behavior. Remove customer data and credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Optional error codes or screenshots; never upload .env files, mail content or production backups.

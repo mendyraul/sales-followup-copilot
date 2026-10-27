@@ -150,7 +150,7 @@ test("invited members receive handoffs and removal leaves work unassigned", asyn
   }
 });
 
-test("saved writing profiles shape local drafts and keep their source context", async ({
+test("writing profiles, onboarding and reviewed feedback work on mobile", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -192,9 +192,9 @@ test("saved writing profiles shape local drafts and keep their source context", 
     await page
       .getByRole("button", { name: "Generate draft", exact: true })
       .click();
-    await expect(page.getByRole("textbox", { name: "Draft body", exact: true })).toHaveValue(
-      /Cheers,\nYour consultant/,
-    );
+    await expect(
+      page.getByRole("textbox", { name: "Draft body", exact: true }),
+    ).toHaveValue(/Cheers,\nYour consultant/);
     const data = await (await page.request.get("/api/workspace")).json();
     const draft = data.leads.find((l: { id: string }) => l.id === id).drafts[0];
     expect(draft.profileVersion).toBe(data.writingProfile.version);
@@ -209,4 +209,56 @@ test("saved writing profiles shape local drafts and keep their source context", 
         data: { action: "deleteLead", leadId: id, version: lead.version },
       });
   }
+  await page.request.post("/api/workspace", {
+    data: { action: "resetOnboarding" },
+  });
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Hide getting-started guide", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Make the next follow-up easy.",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", {
+      name: "Make the next follow-up easy.",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Activity & feedback", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Open GitHub feedback form", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Public feedback title", exact: true })
+    .fill("Improve keyboard navigation");
+  await page
+    .getByRole("textbox", { name: "What should improve?", exact: true })
+    .fill("Fictional feedback only.");
+  await page
+    .getByRole("button", { name: "Preview public feedback", exact: true })
+    .click();
+  const link = page.getByRole("link", {
+    name: "Open GitHub feedback form",
+    exact: true,
+  });
+  const href = await link.getAttribute("href");
+  const url = new URL(href!);
+  expect(url.hostname).toBe("github.com");
+  expect(url.searchParams.get("body")).toContain("Fictional feedback only.");
+  expect(url.searchParams.get("body")).not.toContain("browser-owner");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
 });

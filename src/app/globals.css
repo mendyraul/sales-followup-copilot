@@ -605,3 +605,33 @@ footer {
   gap: 0 12px;
   grid-template-columns: minmax(0, 1fr);
 }
+.workspace-bar {
+  flex-wrap: wrap;
+}
+.workspace-bar > span {
+  overflow-wrap: anywhere;
+}
+.workspace-bar label {
+  flex: 1;
+  max-width: 400px;
+}
+.pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.onboarding {
+  background: #edf4df;
+  border: 1px solid #cbd9b4;
+  border-radius: 12px;
+  padding: 22px;
+  margin: 24px 0;
+}
+.onboarding ol {
+  padding-left: 22px;
+}
+.onboarding a {
+  color: var(--ink);
+}
