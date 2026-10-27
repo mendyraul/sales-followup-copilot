@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { FollowupPanel, type Task, type Interaction } from "./followup-panel";
 import { dayWindow } from "../domain/dates";
+import { MergeContacts, ImportReview, DataTools } from "./data-tools";
 import { WorkspaceBar } from "./workspace-bar";
 import React, {
   FormEvent,
@@ -483,6 +484,12 @@ export default function HomePage() {
                         </div>
                       </form>
                     </section>
+                    <MergeContacts
+                      lead={lead}
+                      mutate={mutate}
+                      onMerged={setSelected}
+                      busy={busy}
+                    />
                     <FollowupPanel
                       lead={lead}
                       timezone={data.settings.timezone}
@@ -673,6 +680,11 @@ export default function HomePage() {
               >
                 Import {preview.validRows.length} leads
               </button>
+              <ImportReview key={csv} csv={csv} mutate={mutate} busy={busy} />
+              <DataTools
+                owner={data.workspace.role === "owner"}
+                demo={data.workspace.demo}
+              />
             </section>
           )}
           {tab === "activity" && (

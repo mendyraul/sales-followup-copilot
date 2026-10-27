@@ -37,7 +37,12 @@ try {
       // Never reset operator edits when the demo restarts.
       if (await tx.lead.findUnique({ where: { name: data.name } })) return;
       // A renamed seed is still the same contact.
-      if (await tx.lead.findFirst({ where: { email: data.email } })) return;
+      if (
+        await tx.lead.findFirst({
+          where: { email: data.email, workspaceId: "legacy" },
+        })
+      )
+        return;
       const lead = await tx.lead.create({
         data: {
           ...data,

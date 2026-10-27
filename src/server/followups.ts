@@ -31,6 +31,8 @@ export async function scopedLead(
   const lead = await tx.lead.findFirst({
     where: { id, workspaceId: ctx.workspaceId },
   });
+  if (lead?.mergedAt)
+    throw new RequestError("Contact was merged. Refresh first.", 409);
   if (!lead) throw new RequestError("Lead not found.", 404);
   return lead;
 }
