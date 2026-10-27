@@ -8,6 +8,8 @@ export type Lead = {
   status: LeadStatus;
   createdAt: string;
   updatedAt: string;
+  lastContactedAt?: string | null;
+  lastReplyAt?: string | null;
 };
 
 export const allowedTransitions: Record<LeadStatus, LeadStatus[]> = {

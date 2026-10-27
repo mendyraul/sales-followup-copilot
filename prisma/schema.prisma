@@ -17,6 +17,12 @@ enum LeadStatus {
 }
 
 model Lead {
+  version Int @default(1)
+  lastContactedAt DateTime?
+  lastReplyAt DateTime?
+  ownerId String?
+  tasks FollowUpTask[]
+  interactions Interaction[]
   workspaceId String @default("legacy")
   workspace Organization @relation(fields: [workspaceId], references: [id])
   @@index([workspaceId])
@@ -217,4 +223,37 @@ model RateLimit {
   key String @unique
   count Int
   lastRequest BigInt
+}
+
+model FollowUpTask {
+  id String @id @default(cuid())
+  leadId String
+  title String
+  dueAt DateTime
+  status String @default("OPEN")
+  revision Int @default(1)
+  needsReview Boolean @default(false)
+  assigneeId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  @@index([leadId,status])
+  @@index([status,dueAt])
+}
+model Interaction {
+  id String @id @default(cuid())
+  leadId String
+  channel String
+  direction String
+  outcome String
+  occurredAt DateTime
+  actorId String?
+  provenance String @default("manual")
+  requestKey String
+  requestHash String
+  note String?
+  createdAt DateTime @default(now())
+  lead Lead @relation(fields:[leadId],references:[id],onDelete:Cascade)
+  @@unique([leadId,requestKey])
+  @@index([leadId,occurredAt])
 }

@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { FollowupPanel, type Task, type Interaction } from "./followup-panel";
+import { dayWindow } from "../domain/dates";
 import { WorkspaceBar } from "./workspace-bar";
 import React, {
   FormEvent,
@@ -30,6 +32,11 @@ type Draft = {
   }[];
 };
 type Lead = {
+  version: number;
+  lastContactedAt: string | null;
+  lastReplyAt: string | null;
+  tasks: Task[];
+  interactions: Interaction[];
   id: string;
   name: string;
   email: string | null;
@@ -50,6 +57,7 @@ type Lead = {
   }[];
 };
 type Workspace = {
+  settings: { timezone: string; name: string };
   workspace: { id: string; role: string; userId: string | null; demo: boolean };
   leads: Lead[];
   audit: { id: string; action: string; createdAt: string; entityId: string }[];
@@ -71,6 +79,7 @@ export default function HomePage() {
   const [data, setData] = useState<Workspace>();
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
+  const [taskView, setTaskView] = useState("ALL");
   const [filter, setFilter] = useState("ALL");
   const [tab, setTab] = useState("queue");
   const [busy, setBusy] = useState(false);
@@ -83,7 +92,7 @@ export default function HomePage() {
     const response = await fetch("/api/workspace", { cache: "no-store" });
     const body = await response.json();
     if (response.status === 401) {
-      window.location.assign("/login");
+      globalThis.location.assign("/login");
       throw new Error("Sign in to continue.");
     }
     if (!response.ok)
@@ -149,23 +158,46 @@ export default function HomePage() {
       ),
     [data],
   );
-  const visible = (data?.leads ?? []).filter(
-    (l) =>
-      (filter === "ALL" || l.status === filter) &&
-      [l.name, l.email, l.source]
-        .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
-  const sorted = [...visible].sort(
-    (a, b) =>
-      (queue.findIndex((q) => q.lead.id === a.id) < 0
-        ? 999
-        : queue.findIndex((q) => q.lead.id === a.id)) -
-      (queue.findIndex((q) => q.lead.id === b.id) < 0
-        ? 999
-        : queue.findIndex((q) => q.lead.id === b.id)),
-  );
+  const taskWindow = dayWindow(data?.settings.timezone || "UTC");
+  const visible = (data?.leads ?? [])
+    .filter((l) => {
+      const task = l.tasks.find((t) => t.status === "OPEN");
+      return (
+        taskView === "ALL" ||
+        (taskView === "NONE" &&
+          !task &&
+          !l.unsubscribed &&
+          !["WON", "LOST"].includes(l.status)) ||
+        (taskView === "OVERDUE" && task && new Date(task.dueAt) < new Date()) ||
+        (taskView === "TODAY" &&
+          task &&
+          new Date(task.dueAt) >= taskWindow.start &&
+          new Date(task.dueAt) < taskWindow.end) ||
+        (taskView === "UPCOMING" &&
+          task &&
+          new Date(task.dueAt) >= taskWindow.end)
+      );
+    })
+    .filter(
+      (l) =>
+        (filter === "ALL" || l.status === filter) &&
+        [l.name, l.email, l.source]
+          .join(" ")
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    );
+  const sorted = [...visible].sort((a, b) => {
+    const at = a.tasks.find((t) => t.status === "OPEN"),
+      bt = b.tasks.find((t) => t.status === "OPEN");
+    if (at && bt)
+      return new Date(at.dueAt).getTime() - new Date(bt.dueAt).getTime();
+    if (at || bt) return at ? -1 : 1;
+    const order = (id: string) => {
+      const n = queue.findIndex((q) => q.lead.id === id);
+      return n < 0 ? 999 : n;
+    };
+    return order(a.id) - order(b.id);
+  });
   const lead = data?.leads.find((l) => l.id === selected);
   const preview = useMemo(() => parseLeadCsvPreview(csv), [csv]);
   function submitLead(e: FormEvent<HTMLFormElement>) {
@@ -315,6 +347,19 @@ export default function HomePage() {
                     ))}
                   </select>
                 </label>
+                <label>
+                  Follow-up view
+                  <select
+                    value={taskView}
+                    onChange={(e) => setTaskView(e.target.value)}
+                  >
+                    <option value="ALL">All leads</option>
+                    <option value="OVERDUE">Overdue</option>
+                    <option value="TODAY">Today</option>
+                    <option value="UPCOMING">Upcoming</option>
+                    <option value="NONE">No next action</option>
+                  </select>
+                </label>
                 <div className="lead-items">
                   {sorted.length === 0 && (
                     <p className="muted">
@@ -347,7 +392,9 @@ export default function HomePage() {
                         {item && (
                           <small>
                             {item.priority.toUpperCase()} PRIORITY ·{" "}
-                            {Math.floor(item.ageHours)}h since last activity
+                            {l.lastContactedAt
+                              ? `${Math.floor(item.ageHours)}h since outbound contact`
+                              : "No recorded outbound contact"}
                             {item.ageHours >= 48 ? " · STALE" : ""}
                           </small>
                         )}
@@ -392,6 +439,7 @@ export default function HomePage() {
                               action: "updateLead",
                               leadId: lead.id,
                               ...values,
+                              version: lead.version,
                               unsubscribed: values.unsubscribed === "on",
                             },
                             "Lead updated.",
@@ -420,7 +468,11 @@ export default function HomePage() {
                                 )
                               )
                                 void mutate(
-                                  { action: "deleteLead", leadId: lead.id },
+                                  {
+                                    action: "deleteLead",
+                                    leadId: lead.id,
+                                    version: lead.version,
+                                  },
                                   "Lead deleted.",
                                   () => setSelected(""),
                                 );
@@ -431,6 +483,12 @@ export default function HomePage() {
                         </div>
                       </form>
                     </section>
+                    <FollowupPanel
+                      lead={lead}
+                      timezone={data.settings.timezone}
+                      busy={busy}
+                      mutate={mutate}
+                    />
                     <section className="panel">
                       <p className="eyebrow">THE NEXT CONVERSATION</p>
                       <h2>Follow-up drafts</h2>

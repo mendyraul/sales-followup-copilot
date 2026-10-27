@@ -582,3 +582,17 @@ footer {
 .workspace-bar > span {
   margin-right: auto;
 }
+.inset {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.button-link {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13px;
+}

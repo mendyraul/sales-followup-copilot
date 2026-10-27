@@ -1,6 +1,16 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 const unique = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-async function post(request: APIRequestContext, body: object) {
+async function post(request: APIRequestContext, body: Record<string, unknown>) {
+  if (
+    ["updateLead", "deleteLead"].includes(String(body.action)) &&
+    body.version === undefined
+  ) {
+    const current = await state(request);
+    const lead = current.leads.find(
+      (l: { id: string }) => l.id === body.leadId,
+    );
+    if (lead) body = { ...body, version: lead.version };
+  }
   return request.post("/api/workspace", { data: body });
 }
 async function state(request: APIRequestContext) {
@@ -276,5 +286,53 @@ test("CSV import handles quoted commas, rolls back conflicts and survives reload
     });
   } finally {
     await post(request, { action: "deleteLead", leadId: lead.id });
+  }
+});
+
+test("scheduled tasks and quick interaction logging work in the browser", async ({
+  page,
+  request,
+}) => {
+  const name = `Tasks ${unique()}`;
+  const response = await post(request, { action: "createLead", name });
+  const { id } = await response.json();
+  try {
+    await page.goto("/");
+    await page.getByRole("button").filter({ hasText: name }).click();
+    await page.getByLabel("Next action title").fill("Review the proposal");
+    await page
+      .getByLabel("Due date (UTC)", { exact: true })
+      .fill("2030-01-20T10:00");
+    await page
+      .getByRole("button", { name: "Schedule task", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("Task scheduled.");
+    await page.getByRole("button", { name: "Tomorrow", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Task rescheduled.");
+    await page
+      .getByRole("button", { name: "Complete task", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("Task completed.");
+    await page
+      .getByRole("button", { name: "Log interaction", exact: true })
+      .click();
+    await page.getByLabel("Interaction outcome").selectOption("EMAILED");
+    await page
+      .getByLabel("Interaction note")
+      .fill("Sent an actual proposal recap.");
+    await page
+      .getByRole("button", { name: "Save interaction", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("Interaction saved.");
+    await page.reload();
+    await page.getByRole("button").filter({ hasText: name }).click();
+    const saved = (await state(request)).leads.find(
+      (l: { id: string }) => l.id === id,
+    );
+    expect(saved.lastContactedAt).not.toBeNull();
+    expect(saved.tasks[0].status).toBe("COMPLETED");
+    expect(saved.interactions).toHaveLength(1);
+  } finally {
+    await post(request, { action: "deleteLead", leadId: id });
   }
 });

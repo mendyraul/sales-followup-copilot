@@ -15,4 +15,15 @@ describe.skipIf(!enabled)('authenticated workspace isolation',()=>{
  it('requires sessions and validates workspace selection',async()=>{const host=new URL(appUrl()).host;await expect(access(new NextRequest(`${appUrl()}/api/workspace`,{headers:{Host:host}}))).rejects.toMatchObject({status:401});const actual=await access(new NextRequest(`${appUrl()}/api/workspace`,{headers:{Host:host,Cookie:cookie}}));expect(actual.workspaceId).toBe(ctxA.workspaceId);await expect(access(new NextRequest(`${appUrl()}/api/workspace`,{headers:{Host:host,Cookie:cookie,'X-Workspace-ID':ctxB.workspaceId}}))).rejects.toMatchObject({status:403});});
  it('rejects unrestricted signup',async()=>{const r=await getAuth().handler(new Request(`${appUrl()}/api/auth/sign-up/email`,{method:'POST',headers:{'Content-Type':'application/json',Origin:appUrl()},body:JSON.stringify({email:`uninvited-${crypto.randomUUID()}@example.com`,name:'Uninvited',password:'Example-test-password-123!'})}));expect(r.status).toBe(403);});
  it('isolates reads, edits, notes, drafts and feedback',async()=>{const lead=await command({action:'createLead',name:`Private ${crypto.randomUUID()}`},ctxA);if (!("id" in lead)) throw new Error("Lead ID missing"); leadId=lead.id;expect((await snapshot(ctxA)).leads.some(l=>l.id===leadId)).toBe(true);expect((await snapshot(ctxB)).leads.some(l=>l.id===leadId)).toBe(false);for(const action of [{action:'updateLead',name:'Stolen'},{action:'addNote',body:'Bad'},{action:'generateDraft'},{action:'feedback',rating:5,comments:'Bad'}])await expect(command({...action,leadId},ctxB)).rejects.toMatchObject({status:404});const audit=await db.auditLog.findFirst({where:{entityId:leadId}});expect(audit?.actorId).toBe(ctxA.userId);});
+
+ it('keeps contact clocks independent from notes and saves next steps atomically',async()=>{
+  const ctx=ctxA;const initial=await db.lead.findUniqueOrThrow({where:{id:leadId}});expect(initial.lastContactedAt).toBeNull();
+  await command({action:'addNote',leadId,body:'Internal research only'},ctx);expect((await db.lead.findUniqueOrThrow({where:{id:leadId}})).lastContactedAt).toBeNull();
+  const input={action:'logInteraction',leadId,outcome:'EMAILED',requestKey:crypto.randomUUID(),note:'Actually emailed',dueAt:'2026-12-01T15:00:00Z',nextAction:'Check proposal'};
+  const first=await command(input,ctx);const again=await command(input,ctx);expect(again).toEqual(first);
+  const saved=await db.lead.findUniqueOrThrow({where:{id:leadId},include:{tasks:true,interactions:true}});expect(saved.interactions).toHaveLength(1);expect(saved.tasks.filter(t=>t.status==='OPEN')).toHaveLength(1);expect(saved.lastContactedAt).not.toBeNull();
+  const task=saved.tasks[0];await command({action:'rescheduleTask',leadId,taskId:task.id,revision:task.revision,snoozeDays:1},ctx);
+  await expect(command({action:'completeTask',leadId,taskId:task.id,revision:task.revision},ctx)).rejects.toMatchObject({status:409});
+  await expect(command({...input,requestKey:crypto.randomUUID(),localDueAt:'bad date',dueAt:undefined},ctx)).rejects.toMatchObject({status:400});expect(await db.interaction.count({where:{leadId}})).toBe(1);
+ });
 });
