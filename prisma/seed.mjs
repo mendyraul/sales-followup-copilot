@@ -35,7 +35,7 @@ try {
   for (const { age, ...data } of seeds) {
     await prisma.$transaction(async (tx) => {
       // Never reset operator edits when the demo restarts.
-      if (await tx.lead.findUnique({ where: { name: data.name } })) return;
+      if (await tx.lead.findFirst({ where: { name: data.name, workspaceId: "legacy" } })) return;
       // A renamed seed is still the same contact.
       if (
         await tx.lead.findFirst({
