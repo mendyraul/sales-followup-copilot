@@ -42,8 +42,25 @@ model FollowUpDraft {
   content     String
   approved    Boolean  @default(false)
   rejected    Boolean  @default(false)
+  subject     String   @default("")
+  provider    String   @default("mock")
+  warnings    Json?
+  revision    Int      @default(1)
+  revisions   DraftRevision[]
   createdAt   DateTime @default(now())
   lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model DraftRevision {
+  id        String @id @default(cuid())
+  draftId   String
+  revision  Int
+  subject   String
+  content   String
+  decision  String
+  createdAt DateTime @default(now())
+  draft     FollowUpDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  @@unique([draftId, revision])
 }
 
 enum LeadEventType {
