@@ -89,6 +89,8 @@ describe('createAiProvider', () => {
 
     expect(JSON.parse(requestInit.body)).toMatchObject({
       model: 'gpt-4o-mini',
+      store:false,
+      max_output_tokens:700,
       text: {
         format: {
           type: 'json_schema',

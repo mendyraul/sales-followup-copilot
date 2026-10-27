@@ -1,4 +1,6 @@
-import {workerStatus} from "./reminders";
+import { gmailEnabled, gmailStatus } from "./gmail";
+import { generateSavedDraft, saveWritingProfile } from "./writing";
+import { workerStatus } from "./reminders";
 import { teamCommand } from "./team";
 import { smtpConfigured } from "./mail";
 import { dataCommand } from "./data-management";
@@ -9,7 +11,6 @@ import { db } from "./db";
 import type { Access } from "./access";
 import { bool, leadFields, object, RequestError, text } from "./validation";
 import { canTransition, type LeadStatus as DomainStatus } from "../domain/lead";
-import { generateFirstFollowupDraft } from "../../lib/firstFollowupDraft";
 
 export async function snapshot(ctx: Access) {
   return db.$transaction(
@@ -18,6 +19,9 @@ export async function snapshot(ctx: Access) {
         where: { workspaceId: ctx.workspaceId, mergedAt: null },
         orderBy: { createdAt: "asc" },
         include: {
+          mailThreads: {
+            include: { messages: { orderBy: { occurredAt: "desc" } } },
+          },
           tasks: { orderBy: { createdAt: "desc" } },
           interactions: { orderBy: { occurredAt: "desc" } },
           drafts: {
@@ -64,7 +68,11 @@ export async function snapshot(ctx: Access) {
             },
           })
         : null,
-      capabilities: { smtp: smtpConfigured() },
+      capabilities: { smtp: smtpConfigured(), gmail: gmailEnabled() },
+      inbox: await gmailStatus(ctx),
+      writingProfile: await tx.writingProfile.findUnique({
+        where: { workspaceId: ctx.workspaceId },
+      }),
       worker: await workerStatus(tx),
       settings: await tx.organization.findUnique({
         where: { id: ctx.workspaceId },
@@ -169,6 +177,7 @@ export async function command(value: unknown, ctx: Access) {
     ].includes(action)
   )
     return teamCommand(input, ctx);
+  if (action === "saveWritingProfile") return saveWritingProfile(input, ctx);
   if (action === "createLead") {
     const fields = leadFields(input);
     return db.$transaction(async (tx) => {
@@ -219,67 +228,8 @@ export async function command(value: unknown, ctx: Access) {
     });
   }
   const id = text(input.leadId, "Lead", 100);
-  if (action === "generateDraft") {
-    const lead = await db.lead.findFirst({
-      where: { id, workspaceId: ctx.workspaceId },
-      include: { timelineNotes: { orderBy: { createdAt: "desc" }, take: 1 } },
-    });
-    if (!lead) throw new RequestError("Lead not found.", 404);
-    if (lead.unsubscribed || ["WON", "LOST"].includes(lead.status))
-      throw new RequestError(
-        "Drafts are unavailable for opted-out or closed leads.",
-        409,
-      );
-    const result = await generateFirstFollowupDraft(
-      {
-        leadName: lead.name,
-        recentContext: lead.timelineNotes[0]?.body || lead.notes || undefined,
-        leadSource: lead.source || undefined,
-        desiredNextStep:
-          text(input.objective, "Next step", 500, true) || undefined,
-      },
-      {
-        provider: process.env.AI_PROVIDER || "mock",
-        apiKey: process.env.AI_API_KEY,
-        model: process.env.AI_MODEL,
-      },
-    );
-    return db.$transaction(async (tx) => {
-      const current = await requireLead(tx, ctx, id);
-      if (current.version !== lead.version)
-        throw new RequestError(
-          "Lead changed while generating. Please try again.",
-          409,
-        );
-      const draft = await tx.followUpDraft.create({
-        data: {
-          leadId: id,
-          stage: "first-followup",
-          subject: result.subject,
-          content: result.body,
-          provider: result.provider,
-          warnings: result.warnings,
-          revisions: {
-            create: {
-              revision: 1,
-              subject: result.subject,
-              content: result.body,
-              decision: "generated",
-            },
-          },
-        },
-      });
-      await event(tx, id, "FOLLOW_UP_DRAFTED", {
-        draftId: draft.id,
-        provider: result.provider,
-      });
-      await audit(tx, ctx, "draft.generated", "draft", draft.id, {
-        leadId: id,
-        provider: result.provider,
-      });
-      return { id: draft.id };
-    });
-  }
+  if (action === "generateDraft") return generateSavedDraft(input, ctx);
+
   return db.$transaction(
     async (tx) => {
       const lead = await requireLead(tx, ctx, id);

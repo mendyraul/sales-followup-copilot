@@ -17,6 +17,7 @@ export type FirstFollowupDraftRequest = {
   leadSource?: string;
   desiredNextStep?: string;
   tone?: FirstFollowupTone;
+  writingProfile?: DraftGenerationInput["writingProfile"];
 };
 
 export type FirstFollowupReviewContext = {
@@ -90,7 +91,8 @@ export function buildFirstFollowupInput(
     objective:
       desiredNextStep ||
       're-engaging after the first conversation and confirming the best next step',
-    tone: request.tone ?? 'friendly'
+    tone: request.tone ?? 'friendly',
+    ...(request.writingProfile?{writingProfile:request.writingProfile}:{})
   };
 }
 

@@ -72,7 +72,9 @@ test("operator workflow persists leads, notes, draft revisions and feedback acro
       /here is the requested pricing recap/,
     );
     await expect(
-      page.getByText("Requested a concise pricing recap.", { exact: true }),
+      page
+        .getByRole("list")
+        .getByText("Requested a concise pricing recap.", { exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Approve draft" }).click();
     await expect(page.getByText("APPROVED", { exact: true })).toBeVisible();
