@@ -1,7 +1,7 @@
-# Feedback capture
+# Feedback
 
-Open **Activity & feedback**, optionally select a related lead, choose a rating from 1–5, add a category and comment, then save. The database records the entry and its audit event in one transaction. Reload to verify persistence. The dashboard shows the 100 most recent entries.
+Activity & feedback saves ratings and comments privately within the current workspace, with workspace-scoped history. No external tracker or analytics receives these records automatically. Operators can disable writes with FEEDBACK_CAPTURE_ENABLED=false.
 
-Comments are required and limited to 3,000 characters; categories are optional free text up to 80 characters. Ratings outside 1–5 are rejected. `FEEDBACK_CAPTURE_ENABLED=false` disables writes. `FEEDBACK_DEFAULT_CHANNEL` defaults to `in_app`.
+The separate maintainer feedback panel accepts a title and description, optionally adds app version/mode, and displays a preview. Only after preview does it offer a GitHub issue-form link or clipboard copy. Opening the link does not submit an issue; the user posts it on GitHub. Contact records, notes, messages and credentials are never attached automatically. Remove client information before public sharing.
 
-Feedback is local operator input. No external notifications or contact automation are triggered. Deleting a related lead retains feedback and clears the relation.
+Owner-only workflow counts are calculated from local workspace history: overdue actions, completed follow-ups and active days in the last 14 days. They stay in the instance and are not marketing telemetry.

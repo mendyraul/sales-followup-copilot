@@ -1,6 +1,6 @@
 name: follow-through
 x-app: &app
-  image: ${FOLLOW_THROUGH_IMAGE:-ghcr.io/mendyraul/sales-followup-copilot:latest}
+  image: ${FOLLOW_THROUGH_IMAGE:-follow-through:0.2.0}
   build: .
   env_file: .env
   environment:
@@ -30,6 +30,12 @@ services:
     <<: *app
     restart: unless-stopped
     ports: ['127.0.0.1:${PORT:-3116}:3000']
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -37,6 +43,12 @@ services:
     <<: *app
     restart: unless-stopped
     command: [npm, run, worker]
+    healthcheck:
+      test: [CMD, node, scripts/worker-health.mjs]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
     depends_on:
       migrate:
         condition: service_completed_successfully

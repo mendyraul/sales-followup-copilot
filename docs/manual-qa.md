@@ -1,16 +1,16 @@
-# Manual QA
+# Manual acceptance checks
 
-Use fictional contacts and `npm run demo`.
+Use fictional contacts in a disposable instance. Before a hosted pilot, repeat these with its actual HTTPS origin and at least two browser accounts.
 
-- Create a lead, reload, select it, and verify name/email/context persist. Edit details and verify valid status transitions. Invalid transitions must return an error.
-- Search by name, email, and source. Filter each status. Hot/aging leads should rise in priority; opted-out and closed leads should leave the follow-up queue.
-- Save a note and reload. Generate a mock draft from that context with an explicit next step.
-- Edit and save a revision; inspect history. Approve it, then edit it; approval must reset. Reject it. No action should send a message.
-- Open the same draft in two tabs. Save a revision in one, then review the old revision in the other. The stale review must fail and preserve the newer text. Reload to continue.
-- Opt out a lead. Generation and approval must be blocked. Delete the lead with confirmation and verify its deletion remains in Activity.
-- Import CSV with quoted commas, escaped quotes, or multiline fields. Invalid rows, duplicate headers/emails, and existing-contact conflicts must block the entire import. Reload and verify successful imports persist.
-- Submit a rating and feedback, reload, and verify it remains. Audit records must reflect saved changes.
-- At 390px width, navigate, select/edit a lead, and verify there is no horizontal page overflow.
-- Restart the demo and verify edited seed contacts retain their changes. Stop the database, reload, and check that the app shows an error and Retry control. Restart Postgres and retry.
-
-CI covers the core persisted workflow, review conflicts, import rollback, API validation, and a mobile layout check. Optional live AI-provider behavior and public deployment are outside this local demo's verification.
+1. Install with Docker, create an owner via the hidden CLI prompt, sign in and set workspace timezone. An unauthenticated API request must return 401 and public signup must be rejected.
+2. Import five CSV contacts, including two people with the same name. Preview matches and explicitly choose create, merge or skip. A malformed row must roll back the whole import.
+3. Schedule a task, switch Today/Overdue/Upcoming/No next action and Mine/Unassigned views. Snooze in the workspace timezone and complete it. Closed/opted-out contacts leave active follow-up queues.
+4. Log an actual outbound interaction with note and next task. Check last contacted changes; an internal edit or note must not change it. Log a reply and check last reply separately.
+5. With the worker healthy, assign an overdue task and confirm one in-app notification after repeated reconciliation. With a tested SMTP relay and opt-in preference, check delivery/digest. Inspect failures and uncertain states before a manual retry.
+6. Save a writing profile, choose source notes and generate a template draft without any API key. Edit, approve, reload and inspect revision history. Editing an approved draft returns it to review; no approval sends mail.
+7. If enabling Gmail, use a Google test user: connect, attach a selected thread only after sharing confirmation, sync twice without duplicate messages, receive a reply and inspect review flag. Reconnect and disconnect; inspect optional removal of imported copies.
+8. If enabling AI, check disclosure and explicit confirmation, selected context, stored provenance, output limit, error handling and exhausted daily cap. Do not use real client content for initial testing.
+9. Merge reviewed duplicates, choose the open task to keep and check both histories and old contact links. Export JSON, preview it and restore into a new workspace. Verify fresh IDs, cleared assignments and no credentials. Rehearse a separate PostgreSQL backup restore.
+10. Invite a colleague, assign a lead and see the handoff. Remove the member: access disappears and work is unassigned. A member cannot export the workspace or alter owner-only settings.
+11. Hide/reopen the guide; inspect local usage counts and private feedback. Preview public feedback without automatically submitting it or attaching customer records.
+12. At 390px width, add a note and log an interaction without horizontal overflow. With over 100 contacts, navigate all pages and load older history. Restart services and verify persisted records and worker health.

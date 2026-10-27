@@ -374,3 +374,11 @@ model MailMessage {
   thread MailThread @relation(fields:[threadId],references:[id],onDelete:Cascade)
   @@unique([threadId,providerMessageId])
 }
+
+model OnboardingState {
+  id String @id @default(cuid())
+  workspaceId String
+  userId String
+  dismissedAt DateTime?
+  @@unique([workspaceId,userId])
+}

@@ -1,48 +1,59 @@
-# Sales Follow-Up Copilot · Follow Through
+# Follow Through · Sales Follow-Up Copilot
 
-A working local sales workspace built with Next.js, React, Prisma, and PostgreSQL. Lead changes, notes, draft revisions, decisions, feedback, and audit records are saved in the database. The dashboard reads saved records rather than preview fixtures.
+Free, MIT-licensed follow-up software for consultants and small agencies. Self-host it with PostgreSQL, invite your team, and keep the next action beside the conversation. Templates work without API keys. People review drafts and send them from their own inbox.
 
-## Run the demo
+## Install
 
-Requires Node.js **22.12+**, npm, Docker, and a running Docker daemon.
+Requires Docker with Compose and Git. From this source checkout:
 
-```bash
+```sh
+sh scripts/install.sh
+```
+
+The installer creates private random secrets, builds the app, applies migrations and starts PostgreSQL, the app and a durable worker. Create your first account with a hidden password prompt:
+
+```sh
+docker compose -f compose.selfhost.yml exec app npm run account:owner -- --email=you@example.com
+```
+
+Open **http://127.0.0.1:3116**. There is no public signup. [Installation, prebuilt images, upgrades and recovery](docs/self-hosting.md).
+
+## What you can do
+
+1. Schedule a next action, snooze it, or complete it; use Today, Overdue, Upcoming and No next action queues.
+2. See actual last contact and last reply separately from internal edits and notes.
+3. Receive durable in-app reminders and optional SMTP reminders or a daily digest, including retry and uncertain-delivery states.
+4. Log a call, email, reply, voicemail or meeting with a note and next task in one mobile-friendly action.
+5. Optionally connect Gmail read-only and explicitly share selected threads into a workspace. Replies flag tasks for review. The app never sends prospect mail.
+6. Save tone, examples, sign-off and phrases to avoid. Choose draft source notes/messages; inspect saved provenance. Local templates are the default; externally generated drafts require confirmation and operator configuration.
+7. Keep people with the same name, review duplicate candidates and CSV matches, and merge histories while retaining old contact links.
+8. Export contact CSV or complete credential-free workspace JSON. Preview a restore into a new workspace with fresh IDs and cleared assignments.
+9. Invite owners/members, assign contacts, receive handoff notifications and leave work unassigned when someone leaves.
+10. Follow a dismissible setup guide, inspect local usage counts and preview feedback before choosing to share it on GitHub.
+
+The queue uses server search, filters and cursor pagination. Notes, activity, feedback and notifications can load older history. Full JSON exports retain domain history, including explicitly shared mail copies; treat exports as private customer data. Accounts, sessions, OAuth tokens and provider secrets are excluded.
+
+## Try a fictional demo
+
+Requires Node **22.12+**, npm and Docker. Use a separate checkout from a running self-hosted build:
+
+```sh
 npm ci
 npm run demo
 ```
 
-Open **http://127.0.0.1:3115**. The demo command creates `.env` from `.env.example` only when missing, starts Postgres, applies committed migrations, adds fictional contacts without overwriting existing contacts, builds the app, and starts it on loopback. It forces the mock draft provider and manual mode for this process. No key or paid API is needed. **Sending is disabled**, including after draft approval.
+Open **http://127.0.0.1:3115**. The demo seeds fictional `.example` contacts, forces template drafts and retains its database volume. Demo mode bypasses sign-in and is restricted to loopback; use authenticated self-host mode for real work. Never build into a checkout while it serves `.next`.
 
-Stop the app with Ctrl-C. Your data remains in the Docker volume. Restart with `npm run demo`. To stop Postgres without removing data:
+## Optional services and privacy
 
-```bash
-docker compose stop db
-```
+The core app needs no subscriptions, payment details or external telemetry. Configure SMTP only if you want email reminders. Gmail needs your own Google OAuth application and `gmail.readonly` permission; Google may require verification for a public rollout. Google access is per member and selected thread content becomes shared only after confirmation. Optional OpenAI generation shares chosen context after confirmation, has daily request limits and uses `store: false`; provider retention policies still apply. [Configuration](docs/environment-variables.md).
 
-Ports are 3115 for the app and 5617 for Postgres. Change `PORT`, `DB_PORT`, and the port in `DATABASE_URL` together as needed; `PORT` can be changed independently. If the app port is occupied, the demo exits before rebuilding. Never run a build while another process is serving this checkout's `.next` directory.
+This is an early open-source pilot. We test provider boundaries with fixtures; a real Gmail OAuth application, SMTP relay and AI account must be exercised by the operator before enabling them for a pilot. Hosting is optional and operator-managed; no hosted service or SLA is included.
 
-## Five-minute walkthrough
+## Develop and verify
 
-1. Select **Summit Home Services** in the pipeline. Hot leads sort first; age raises urgency and the queue marks leads stale after 48 hours. Closed and opted-out leads are excluded from the follow-up queue.
-2. Add a note with the latest request. Enter a desired next step and generate a draft. The deterministic mock uses the saved note and lead context.
-3. Edit the draft and save a revision. Approve or reject it, then reload the page and select the lead again. Decisions and prior text remain in revision history. Editing an approved draft returns it to review. Approval never sends a message.
-4. Add a lead, update its details, and advance its status. Allowed transitions are NEW → CONTACTED/LOST; CONTACTED → REPLIED/HOT/LOST; REPLIED → HOT/WON/LOST; HOT → WON/LOST. WON and LOST are terminal. Opt-out blocks draft generation and approval.
-5. Open **Import CSV**, review the preview, and import valid contacts. Open **Activity & feedback** to submit feedback and inspect saved audit events. Delete a lead if desired; its audit record remains.
-
-All seed emails use `.example` domains. Use fictional data for demonstrations.
-
-## Development and checks
-
-```bash
-cp .env.example .env  # only for a new environment
-npm run db:migrate
-npm run db:seed
-npm run dev -- --port 3115
-```
-
-Start Postgres first with `docker compose up -d --wait db`. `npm run db:seed` adds missing fictional contacts; it does not update existing contacts. To run without adding demo data, skip the seed step. For a production build locally, stop dev, then run `npm run build` and `npm run start -- --port 3115`.
-
-```bash
+```sh
+npm ci
 npm run lint
 npm run typecheck
 npm test
@@ -50,43 +61,6 @@ npm audit --audit-level=moderate
 npm run build
 ```
 
-Browser tests run a production server on port 3120 and create/delete fictional records. Use a **separate test database**; never point them at important data:
+Database integration and browser checks require an isolated PostgreSQL database whose name ends in `_test`. Set `DATABASE_URL`, `BETTER_AUTH_SECRET` (32+ characters) and `AI_PROVIDER=mock`; then run `npm run db:migrate`, `npm run db:seed`, `npx playwright install chromium` and `npm run test:e2e`. Browser tests start demo and authenticated servers on 3120/3121 and create fictional accounts/records. Never use a real workspace database. [Verification](docs/verification.md), [manual checks](docs/manual-qa.md), [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md).
 
-```bash
-export DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5618/sales_followup_test'
-export AI_PROVIDER=mock
-npm run db:migrate
-npm run db:seed
-npm run build
-npx playwright install chromium
-npm run test:e2e
-```
-
-Provision the test Postgres separately. CI provides one automatically, checks dependency advisories, runs unit/type/lint/build checks, and exercises real persisted browser workflows and API validation. It uploads browser traces on failure.
-
-## CSV import
-
-The UI previews and imports up to 200 rows atomically. Required columns: `name,email`. Optional columns: `phone,source,status`. Status is case insensitive; quoted commas, newlines, and escaped quotes are supported. Missing/unknown/duplicate headers, bad rows, and duplicate emails block the entire import. Existing email or name conflicts roll back every row. Imports create contacts; they do not overwrite existing leads.
-
-```csv
-name,email,phone,source,status
-"River, Studio",hello@river.example,,Referral,new
-```
-
-The CLI uses the same running local API, validation, transaction, and audit trail:
-
-```bash
-npm run import:csv -- ./leads.csv
-```
-
-## Structure and operating limits
-
-- `src/app`: responsive dashboard and `/api/workspace` route. GET returns persisted workspace data; JSON POST accepts `createLead`, `updateLead`, `deleteLead`, `addNote`, `generateDraft`, `reviewDraft`, `importCsv`, and `feedback` commands.
-- `src/server`: Prisma transactions, input validation, provider orchestration, and audit writes.
-- `src/domain` and `lib`: queue/status logic, CSV parser, AI provider contract, prompt template, and domain tests. Historical preview fixtures remain test data and are not used by the dashboard.
-- `prisma/migrations`: initial schema and additive draft-revision migration. `prisma/seed.mjs` adds fictional contacts.
-- `e2e`: real database browser flows, conflicting review tests, validation, atomic imports, and mobile checks.
-
-This release is a **single-operator local demo**, with no authentication, tenant isolation, email delivery, background scheduling, or CRM sync. Keep it on loopback. Public hosting requires authentication and access controls first. Audit history and revision history are persisted; the dashboard shows the latest 100 audit and feedback entries. Lead deletion removes associated notes/drafts but retains audit records and unlinks feedback.
-
-See [environment variables](docs/environment-variables.md), [deployment and migration](docs/deployment.md), [manual QA](docs/manual-qa.md), and [feedback capture](docs/feedback-capture.md).
+The application is Next.js/React, Prisma/PostgreSQL, Better Auth and pg-boss. `src/server` enforces workspace access and transactions; `src/domain` contains rules; `prisma/migrations` preserves upgrade history. See [deployment](docs/deployment.md) and [MIT license](LICENSE).

@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 type Account = {
   demo: boolean;
@@ -6,6 +7,7 @@ type Account = {
   memberships: { role: string; organization: { id: string; name: string } }[];
 };
 export function WorkspaceBar({ activeId }: { activeId: string }) {
+  const router = useRouter();
   const [account, setAccount] = useState<Account>();
   const [error, setError] = useState("");
   useEffect(() => {
@@ -47,7 +49,7 @@ export function WorkspaceBar({ activeId }: { activeId: string }) {
             headers: { "Content-Type": "application/json" },
             body: "{}",
           });
-          location.assign("/login");
+          router.replace("/login");
         }}
       >
         Sign out

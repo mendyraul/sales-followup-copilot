@@ -1,0 +1,64 @@
+name: Release images
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild
+        required: true
+permissions:
+  contents: write
+jobs:
+  image:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      BOOTSTRAP_PASSWORD: Release-fixture-only-123!
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build production image and start isolated services
+        run: |
+          set -euo pipefail
+          node scripts/setup.mjs
+          docker compose -f compose.selfhost.yml up --build --wait --wait-timeout 180 -d
+          docker compose -f compose.selfhost.yml exec -T -e BOOTSTRAP_PASSWORD app npm run account:owner -- --email=release-smoke@example.com
+          node scripts/release-smoke.mjs
+      - name: Rehearse a database backup restore
+        run: |
+          set -euo pipefail
+          sh scripts/backup.sh
+          docker compose -f compose.selfhost.yml exec -T db createdb -U followthrough restore_test
+          docker compose -f compose.selfhost.yml exec -T db pg_restore -U followthrough -d restore_test --no-owner --no-acl < backups/*.dump
+          test "$(docker compose -f compose.selfhost.yml exec -T db psql -U followthrough -d restore_test -Atc 'SELECT COUNT(*) FROM "Lead" WHERE email='"'release-fixture@example.com'"';')" = '1'
+      - name: Archive with checksum and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          test "$(node -p "require('./package.json').version")" = "$version"
+          asset="follow-through-${TAG}-linux-${{ matrix.arch }}.tar.gz"
+          docker save "follow-through:$version" | gzip > "$asset"
+          sha256sum "$asset" > "$asset.sha256"
+          gh release upload "$TAG" "$asset" "$asset.sha256" --clobber
+      - name: Diagnostics
+        if: failure()
+        run: docker compose -f compose.selfhost.yml logs --tail=80 app worker migrate
+      - name: Stop fixtures
+        if: always()
+        run: docker compose -f compose.selfhost.yml down -v
